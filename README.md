@@ -1,0 +1,71 @@
+# Google Sheets with PySpark on Dataproc Serverless
+
+This project is a demonstration of how to use Google Sheets as a data source for a PySpark session running on **Google Cloud Dataproc Serverless**. It includes a Jupyter notebook for data processing and utility scripts for managing the Google Sheets data.
+
+## Project Structure
+
+```
+.
+├── .gitignore
+├── drive-api.json        # (Git-ignored) Google Service Account credentials
+├── pyproject.toml        # Project dependencies and configuration
+├── sheets_pyspark.ipynb  # Main Jupyter Notebook for data analysis
+├── uv.lock               # Lock file for uv package manager
+├── sample_data/          # Sample CSV files for seeding the database
+│   ├── legacy_charges.csv
+│   ├── merchant_excluded.csv
+│   └── merchant_send_mid_label.csv
+└── utils/                # Utility scripts
+    ├── seed_gsheets.py
+    └── test_gspread_access.py
+```
+
+## Setup and Installation
+
+### 1. Prerequisites
+
+*   Python 3.11
+*   [uv](https://github.com/astral-sh/uv) (a fast Python package installer)
+*   Access to a Google Cloud project with Dataproc Serverless enabled.
+
+### 2. Credentials
+
+This project requires Google Service Account credentials to access Google Sheets and Google Drive.
+
+1.  Obtain your Service Account key in JSON format from the Google Cloud Console.
+2.  Rename the file to `drive-api.json` and place it in the root of this project directory.
+3.  **Important**: The `drive-api.json` file is included in `.gitignore` and should never be committed to version control.
+
+### 3. Environment and Dependencies
+
+1.  **Install uv** (if you don't have it already):
+    ```bash
+    pip install uv
+    ```
+
+2.  **Create a virtual environment**:
+    ```bash
+    uv sync
+    ```
+
+3.  **Activate the virtual environment**:
+    ```bash
+    source .venv/bin/activate
+    ```
+
+## Usage
+
+### Main Notebook
+
+The core logic is within the `sheets_pyspark.ipynb` notebook. It demonstrates how to:
+1.  Connect to a Dataproc Serverless Spark session.
+2.  Authenticate with Google Sheets using service account credentials.
+3.  Read data from multiple Google Sheets into Spark DataFrames.
+4.  Perform SQL queries and analysis on the data.
+
+### Utility Scripts
+
+The `utils/` directory contains helper scripts:
+
+*   `test_gspread_access.py`: A simple script to verify that your `drive-api.json` credentials are correct and can access the Google Sheets API.
+*   `seed_gsheets.py`: A script to populate the target Google Sheets with the sample data from the `sample_data/` directory.
