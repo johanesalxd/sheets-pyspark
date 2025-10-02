@@ -15,4 +15,4 @@ pandas==2.3.3
 numpy==2.3.3
 
 # GCS access
-google-cloud-storage==3.40
+google-cloud-storage==3.4.0
