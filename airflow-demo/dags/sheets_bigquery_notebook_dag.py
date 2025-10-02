@@ -1,11 +1,11 @@
 """
 Airflow DAG for scheduling BigQuery notebook execution using Vertex AI Workbench.
 
-This DAG demonstrates how to schedule a notebook in GCP using Vertex AI Workbench Executor API,
-similar to how Databricks uses DatabricksSubmitRunOperator.
+This DAG schedules notebook execution in GCP using the Vertex AI Workbench Executor API
+with Airflow's PythonOperator.
 
 Author: Demo
-Project: Configurable (default: your-project-id)
+Project: Configurable via GCP_PROJECT environment variable
 """
 
 from datetime import timedelta

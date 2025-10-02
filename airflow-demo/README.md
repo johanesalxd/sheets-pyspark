@@ -1,27 +1,16 @@
 # Airflow Notebook Scheduling Demo
 
-Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with Vertex AI Workbench Executor, providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with Vertex AI Workbench Executor.
 
 ## Overview
 
-This demo uses Airflow's `PythonOperator` with the Vertex AI Workbench Executor API to schedule notebook execution, providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
-
-**Comparison:**
-
-| Aspect | Databricks | GCP (This Demo) |
-|--------|-----------|-----------------|
-| Operator | `DatabricksSubmitRunOperator` | `PythonOperator` + Notebooks API |
-| Execution | Databricks Runtime | Vertex AI Workbench Executor |
-| Integration | Databricks-specific | GCP-native services |
-| Complexity | Simple | Simple |
-
-Both approaches provide clean notebook scheduling in Airflow.
+This demo shows how to schedule notebook execution in GCP using Airflow's `PythonOperator` with the Vertex AI Workbench Executor API. The solution provides automated, production-ready notebook scheduling using GCP-native services.
 
 ## Project Structure
 
 ```
 airflow-demo/
-├── README.md                                    # This file
+├── README.md                                   # This file
 ├── dags/
 │   └── sheets_bigquery_notebook_dag.py         # Airflow DAG
 ├── notebooks/
@@ -84,10 +73,7 @@ gsutil ls gs://your-project-id-notebooks/notebooks/
 ## Monitoring
 
 - **Airflow UI:** DAG status and logs
-- **Cloud Console:** Vertex AI Workbench executions
 - **Cloud Logging:** Detailed execution logs
-- **GCS:** Output notebooks in `notebook-outputs/` folder
-- **BigQuery:** Verify data in temp tables
 
 ## How It Works
 
@@ -104,21 +90,10 @@ Airflow DAG (Cloud Composer)
               → Saves output to GCS
 ```
 
-## Comparison to Databricks
+### Implementation
 
-### Databricks Approach
-```python
-from airflow.providers.databricks.operators.databricks import DatabricksSubmitRunOperator
+The DAG uses a Python function with the Notebooks API:
 
-run_notebook = DatabricksSubmitRunOperator(
-    task_id='run_notebook',
-    notebook_task={
-        'notebook_path': '/path/to/notebook',
-    }
-)
-```
-
-### GCP Approach (This Demo)
 ```python
 from airflow.operators.python import PythonOperator
 from google.cloud import notebooks_v1
@@ -131,6 +106,9 @@ def execute_notebook(**context):
         execution={
             "execution_template": {
                 "input_notebook_file": notebook_path,
+                "output_notebook_folder": output_path,
+                "machine_type": "n1-standard-4",
+                "service_account": service_account,
             }
         }
     )
@@ -141,8 +119,6 @@ run_notebook = PythonOperator(
     python_callable=execute_notebook,
 )
 ```
-
-Both approaches provide clean, declarative notebook scheduling in Airflow.
 
 ## Resources
 
