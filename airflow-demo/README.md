@@ -1,172 +1,137 @@
 # Airflow Notebook Scheduling Demo
 
-This demo demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow), providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow), providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+
+## Overview
+
+This demo uses Vertex AI Custom Training Jobs to execute notebooks via Papermill in a containerized environment, similar to how Databricks schedules notebook execution.
+
+**Comparison:**
+
+| Aspect | Databricks | GCP (This Demo) |
+|--------|-----------|-----------------|
+| Operator | `DatabricksSubmitRunOperator` | `CreateCustomTrainingJobOperator` |
+| Execution | Databricks Runtime | Vertex AI + Docker Container |
+| Integration | Databricks-specific | GCP-native services |
 
 ## Project Structure
 
 ```
 airflow-demo/
 ├── README.md                                    # This file
+├── Dockerfile                                   # Container for notebook execution
 ├── dags/
-│   └── sheets_bigquery_notebook_dag.py         # Airflow DAG for scheduling
+│   └── sheets_bigquery_notebook_dag.py         # Airflow DAG
 ├── notebooks/
-│   └── sheets_bigquery_scheduled.ipynb         # Production-ready notebook
+│   └── sheets_bigquery_scheduled.ipynb         # Notebook with env var support
 ├── config/
-│   └── requirements.txt                        # Python dependencies for container
+│   └── requirements.txt                        # Python dependencies
 └── setup/
-    └── setup_vertex_ai.sh                      # GCP setup script
+    └── setup_vertex_ai.sh                      # Complete setup script
 ```
 
-## Components
-
-### Airflow DAG
-
-**File:** `dags/sheets_bigquery_notebook_dag.py`
-
-Uses `CreateCustomTrainingJobOperator` to schedule notebook execution via Vertex AI.
-
-**Features:**
-- Daily execution at 2 AM
-- Retry logic: 2 attempts with 5-minute delays
-- Parameterized execution via environment variables
-- Alternative implementations included (Bash, Python operators)
-
-**Required Configuration:**
-- `GCS_NOTEBOOK_PATH`: Notebook location in GCS
-- `GCS_OUTPUT_PATH`: Output storage location
-- `SERVICE_ACCOUNT`: Execution service account
-
-### Scheduled Notebook
-
-**File:** `notebooks/sheets_bigquery_scheduled.ipynb`
-
-Production-ready version with environment variable support, logging, and parameterization. Business logic identical to original notebook.
-
-**Enhancements:**
-- Environment variable configuration
-- Execution logging
-- Parameterized sheet IDs
-- Flexible credentials handling
-- Backward compatible with local execution
-
-**Data Flow:**
-1. Reads from 3 Google Sheets
-2. Writes to BigQuery temp tables
-3. Performs SQL join analysis
-
-### Setup Script
-
-**File:** `setup/setup_vertex_ai.sh`
-
-Automates GCP resource provisioning.
-
-**Actions:**
-- Enables required APIs (Vertex AI, BigQuery, Storage, Compute)
-- Creates service account with appropriate IAM roles
-- Provisions GCS bucket for notebook storage
-- Configures permissions
-
-## Databricks Comparison
-
-| Aspect | Databricks | GCP |
-|--------|-----------|-----|
-| Operator | `DatabricksSubmitRunOperator` | `CreateCustomTrainingJobOperator` |
-| Setup | Native integration | Requires containerization |
-| Execution | Databricks Runtime | Vertex AI Custom Training |
-| Integration | Databricks-specific | GCP-native services |
-| Cost Model | DBU-based | Compute-based |
-
-## Setup
+## Quick Start
 
 ### Prerequisites
 
-- GCP Project: `your-project-id`
-- Cloud Composer environment
-- Vertex AI API enabled
-- Service account with required permissions
+- GCP Project with billing enabled
+- Cloud Composer environment (e.g., `composer-demo`)
+- Docker installed locally
+- `gcloud` CLI configured
+- `drive-api.json` credentials in parent directory
 
-### Installation
+### One-Command Setup
 
-**Step 1: Provision GCP Resources**
 ```bash
-cd setup
-./setup_vertex_ai.sh
+cd airflow-demo/setup
+./setup_vertex_ai.sh your-project-id
 ```
 
-**Step 2: Upload Notebook to GCS**
-```bash
-gsutil cp notebooks/sheets_bigquery_scheduled.ipynb \
-  gs://your-project-id-notebooks/notebooks/
-```
+This command:
+1. Enables required APIs
+2. Creates service account with IAM roles
+3. Creates GCS bucket and directories
+4. Creates Artifact Registry repository
+5. Builds and pushes Docker container
+6. Uploads notebook and credentials to GCS
+7. Deploys DAG to Cloud Composer
 
-**Step 3: Configure DAG**
+### Configuration
 
-Edit `dags/sheets_bigquery_notebook_dag.py`:
+To customize, edit `dags/sheets_bigquery_notebook_dag.py`:
+
 ```python
-GCS_NOTEBOOK_PATH = "gs://your-project-id-notebooks/notebooks/sheets_bigquery_scheduled.ipynb"
-GCS_OUTPUT_PATH = "gs://your-project-id-notebooks/notebook-outputs/"
-SERVICE_ACCOUNT = "notebook-executor@your-project-id.iam.gserviceaccount.com"
+PROJECT_ID = "your-project-id"  # Change this
+REGION = "us-central1"
 ```
 
-**Step 4: Deploy to Cloud Composer**
+All paths are derived from `PROJECT_ID`.
+
+## Execution
+
+### Trigger DAG
+
+**Via Airflow UI:**
+1. Open Cloud Composer Airflow UI
+2. Enable `sheets_bigquery_notebook_dag`
+3. Click "Trigger DAG"
+
+**Via CLI:**
 ```bash
-gcloud composer environments storage dags import \
-  --environment YOUR_COMPOSER_ENV \
-  --location us-central1 \
-  --source dags/sheets_bigquery_notebook_dag.py
-```
-
-**Step 5: Trigger Execution**
-
-Via Airflow UI:
-1. Navigate to Cloud Composer environment
-2. Open Airflow UI
-3. Enable `sheets_bigquery_notebook_dag`
-4. Trigger execution
-
-Via CLI:
-```bash
-gcloud composer environments run YOUR_ENV \
+gcloud composer environments run composer-demo \
   --location us-central1 \
   dags trigger -- sheets_bigquery_notebook_dag
 ```
 
+### Verification
+
+**Check deployment:**
+```bash
+# GCS bucket
+gsutil ls gs://your-project-id-notebooks/
+
+# Docker image
+gcloud artifacts docker images list \
+  us-central1-docker.pkg.dev/your-project-id/notebook-executor
+```
+
 ## Monitoring
 
-Monitor execution through:
-- Airflow UI: DAG status and logs
-- Cloud Console: Vertex AI job details
-- Cloud Logging: Detailed execution logs
-- BigQuery: Verify data in temp tables
+- **Airflow UI:** DAG status and logs
+- **Cloud Console:** Vertex AI job details
+- **Cloud Logging:** Detailed execution logs
+- **BigQuery:** Verify data in temp tables
 
-## Key Differences from Databricks
+## How It Works
 
-**Infrastructure:**
-- Databricks: Native notebook execution
-- GCP: Container-based execution via Papermill
+### Environment Variables
 
-**Advantages:**
-- Native BigQuery integration
-- Flexible containerization
-- GCP service integration
-- Compute-based pricing
+The notebook uses environment variables for configuration:
 
-## Environment Variables
+**Set in DAG → Passed to Container → Read by Notebook**
 
-The notebook supports the following environment variables:
+```python
+# In DAG (container_spec.env)
+{"name": "GCP_PROJECT", "value": "your-project-id"}
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `GCP_PROJECT` | BigQuery project ID | `your-project-id` |
-| `GCP_REGION` | BigQuery region | `us-central1` |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Service account path | `drive-api.json` |
-| `LEGACY_CHARGES_SHEET_ID` | Legacy charges sheet | `1kQENu6sumzEQX60fjQtgmXvwPGlUfaNRgW7v_TWFUXo` |
-| `MERCHANT_SEND_MID_LABEL_SHEET_ID` | Merchant send mid label sheet | `1_8sm8QciAU3T8oDlNS1Pfj-GQlmlJBrAi1TYdnnMlkw` |
-| `MERCHANT_EXCLUDED_SHEET_ID` | Merchant excluded sheet | `1orVBlPP77HTt9d8x-lC1Oo5xrPp0r1FgVUQ-43DYqYc` |
+# In Notebook
+project = os.getenv("GCP_PROJECT", "default-value")
+```
+
+**Available Variables:**
+
+| Variable | Purpose |
+|----------|---------|
+| `GCP_PROJECT` | BigQuery project ID |
+| `GCP_REGION` | BigQuery region |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON |
+
+### Credentials
+
+Credentials are uploaded to GCS and downloaded at runtime to `/tmp/drive-api.json` using `gsutil cp`.
 
 ## Resources
 
 - [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
 - [Cloud Composer Documentation](https://cloud.google.com/composer/docs)
-- [Airflow Google Provider](https://airflow.apache.org/docs/apache-airflow-providers-google/)
 - [Papermill Documentation](https://papermill.readthedocs.io/)

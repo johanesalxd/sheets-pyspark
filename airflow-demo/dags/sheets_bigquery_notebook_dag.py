@@ -5,9 +5,10 @@ This DAG demonstrates how to schedule a notebook in GCP using Vertex AI,
 similar to how Databricks uses DatabricksSubmitRunOperator.
 
 Author: Demo
-Project: your-project-id
+Project: Configurable (default: your-project-id)
 """
 
+from datetime import datetime
 from datetime import timedelta
 
 from airflow import DAG
@@ -15,17 +16,20 @@ from airflow.providers.google.cloud.operators.vertex_ai.custom_job import \
     CreateCustomTrainingJobOperator
 from airflow.utils.dates import days_ago
 
-# Configuration
+# Configuration - Update these values for your environment
 PROJECT_ID = "your-project-id"
 REGION = "us-central1"
 DISPLAY_NAME = "sheets-bigquery-notebook-execution"
 
-# GCS paths - Update these to match your setup
-GCS_NOTEBOOK_PATH = "gs://YOUR_BUCKET_ID/notebooks/sheets_bigquery_scheduled.ipynb"
-GCS_OUTPUT_PATH = "gs://YOUR_BUCKET_ID/notebook-outputs/"
+# GCS paths - These will be set by the setup script
+BUCKET_NAME = f"{PROJECT_ID}-notebooks"
+GCS_NOTEBOOK_PATH = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
+GCS_OUTPUT_PATH = f"gs://{BUCKET_NAME}/notebook-outputs/"
+GCS_CREDENTIALS_PATH = f"gs://{BUCKET_NAME}/credentials/drive-api.json"
 
-# Service account for execution
-SERVICE_ACCOUNT = "YOUR_SERVICE_ACCOUNT@your-project-id.iam.gserviceaccount.com"
+# Service account and container image
+SERVICE_ACCOUNT = f"notebook-executor@{PROJECT_ID}.iam.gserviceaccount.com"
+IMAGE_URI = f"{REGION}-docker.pkg.dev/{PROJECT_ID}/notebook-executor/notebook-executor:latest"
 
 # Default arguments for the DAG
 default_args = {
@@ -49,26 +53,11 @@ with DAG(
     tags=["bigquery", "notebook", "vertex-ai", "demo"],
 ) as dag:
 
-    # Note: For actual notebook execution, you would use one of these approaches:
-    #
-    # Option 1: Use Vertex AI Workbench Executor (Recommended)
-    # This requires the notebook to be in a Vertex AI Workbench instance
-    #
-    # Option 2: Use Custom Training Job with notebook execution container
-    # This is what we demonstrate below
-    #
-    # Option 3: Convert to Python script and use DataprocSubmitJobOperator
-
-    # For this demo, we'll show the structure using a custom container approach
-    # In production, you'd use Vertex AI Workbench Executor or Notebooks API
-
     execute_notebook = CreateCustomTrainingJobOperator(
         task_id="execute_sheets_bigquery_notebook",
         project_id=PROJECT_ID,
         region=REGION,
         display_name=DISPLAY_NAME,
-        # Container spec for notebook execution
-        # You would build a custom container that executes the notebook
         worker_pool_specs=[
             {
                 "machine_spec": {
@@ -76,46 +65,31 @@ with DAG(
                 },
                 "replica_count": 1,
                 "container_spec": {
-                    # This would be your custom container that runs papermill or nbconvert
-                    "image_uri": f"gcr.io/{PROJECT_ID}/notebook-executor:latest",
-                    "command": ["python", "-m", "papermill"],
+                    "image_uri": IMAGE_URI,
+                    "command": ["sh", "-c"],
                     "args": [
-                        GCS_NOTEBOOK_PATH,
-                        f"{GCS_OUTPUT_PATH}output-{{{{ ds }}}}.ipynb",
-                        "--parameters",
-                        f"project_id={PROJECT_ID}",
-                        f"region={REGION}",
+                        f"gsutil cp {GCS_CREDENTIALS_PATH} /tmp/drive-api.json && "
+                        f"python -m papermill {GCS_NOTEBOOK_PATH} "
+                        f"{GCS_OUTPUT_PATH}output-{{{{ ds }}}}.ipynb "
+                        f"--parameters project_id={PROJECT_ID} region={REGION}"
                     ],
+                    "env": [
+                        {"name": "GCP_PROJECT", "value": PROJECT_ID},
+                        {"name": "GCP_REGION", "value": REGION},
+                        {"name": "GOOGLE_APPLICATION_CREDENTIALS",
+                            "value": "/tmp/drive-api.json"},
+                    ],
+                },
+                # Mount GCS bucket for credentials access
+                "disk_spec": {
+                    "boot_disk_type": "pd-ssd",
+                    "boot_disk_size_gb": 100,
                 },
             }
         ],
-        # Service account with necessary permissions
         service_account=SERVICE_ACCOUNT,
+        # Enable GCS FUSE for mounting credentials
+        base_output_dir=GCS_OUTPUT_PATH,
     )
 
-    # Task dependencies (if you have multiple tasks)
     execute_notebook
-
-# For the simplest demo, you could also use a Python operator
-"""
-from airflow.operators.python import PythonOperator
-import papermill as pm
-
-def execute_notebook_function(**context):
-    pm.execute_notebook(
-        input_path=GCS_NOTEBOOK_PATH,
-        output_path=f"{GCS_OUTPUT_PATH}output-{context['ds']}.ipynb",
-        parameters={
-            'project_id': PROJECT_ID,
-            'region': REGION,
-            'execution_date': context['ds'],
-        }
-    )
-
-execute_notebook_python = PythonOperator(
-    task_id='execute_notebook_python',
-    python_callable=execute_notebook_function,
-    provide_context=True,
-    dag=dag,
-)
-"""
