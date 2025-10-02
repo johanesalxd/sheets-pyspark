@@ -1,21 +1,28 @@
 # Google Sheets with PySpark on Dataproc Serverless
 
-This project is a demonstration of how to use Google Sheets as a data source for a PySpark session running on **Google Cloud Dataproc Serverless**. It includes a Jupyter notebook for data processing and utility scripts for managing the Google Sheets data.
+This project demonstrates using Google Sheets as a data source for PySpark sessions on Google Cloud Dataproc Serverless. It includes Jupyter notebooks for data processing and an Airflow demo for scheduling notebook execution.
 
 ## Project Structure
 
 ```
 .
 ├── .gitignore
-├── drive-api.json        # (Git-ignored) Google Service Account credentials
-├── pyproject.toml        # Project dependencies and configuration
-├── sheets_pyspark.ipynb  # Main Jupyter Notebook for data analysis
-├── uv.lock               # Lock file for uv package manager
-├── sample_data/          # Sample CSV files for seeding the database
+├── drive-api.json              # (Git-ignored) Google Service Account credentials
+├── pyproject.toml              # Project dependencies and configuration
+├── sheets_pyspark.ipynb        # Main Jupyter Notebook for data analysis
+├── sheets_bigquery.ipynb       # BigQuery notebook example
+├── uv.lock                     # Lock file for uv package manager
+├── airflow-demo/               # Airflow notebook scheduling demo
+│   ├── README.md               # Demo documentation
+│   ├── dags/                   # Airflow DAG definitions
+│   ├── notebooks/              # Production-ready notebooks
+│   ├── config/                 # Configuration files
+│   └── setup/                  # Setup scripts
+├── sample_data/                # Sample CSV files
 │   ├── legacy_charges.csv
 │   ├── merchant_excluded.csv
 │   └── merchant_send_mid_label.csv
-└── utils/                # Utility scripts
+└── utils/                      # Utility scripts
     ├── seed_gsheets.py
     └── test_gspread_access.py
 ```
@@ -63,9 +70,15 @@ The core logic is within the `sheets_pyspark.ipynb` notebook. It demonstrates ho
 3.  Read data from multiple Google Sheets into Spark DataFrames.
 4.  Perform SQL queries and analysis on the data.
 
+### Airflow Demo
+
+The `airflow-demo/` directory contains a complete demonstration of scheduling notebook execution using Cloud Composer (Airflow). This provides a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+
+See [airflow-demo/README.md](airflow-demo/README.md) for detailed setup and usage instructions.
+
 ### Utility Scripts
 
 The `utils/` directory contains helper scripts:
 
-*   `test_gspread_access.py`: A simple script to verify that your `drive-api.json` credentials are correct and can access the Google Sheets API.
-*   `seed_gsheets.py`: A script to populate the target Google Sheets with the sample data from the `sample_data/` directory.
+*   `test_gspread_access.py`: Verifies `drive-api.json` credentials and Google Sheets API access.
+*   `seed_gsheets.py`: Populates Google Sheets with sample data from `sample_data/` directory.

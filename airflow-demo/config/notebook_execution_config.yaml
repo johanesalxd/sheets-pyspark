@@ -1,0 +1,38 @@
+# Configuration for notebook execution in Vertex AI
+# This file can be used to customize the execution environment
+
+project_id: your-project-id
+region: us-central1
+
+# Notebook execution settings
+notebook:
+  input_path: gs://YOUR_BUCKET_ID/notebooks/sheets_bigquery_scheduled.ipynb
+  output_path: gs://YOUR_BUCKET_ID/notebook-outputs/
+
+# Environment variables passed to the notebook
+environment_variables:
+  GCP_PROJECT: your-project-id
+  GCP_REGION: us-central1
+  # Optional: Override sheet IDs
+  # LEGACY_CHARGES_SHEET_ID: "1kQENu6sumzEQX60fjQtgmXvwPGlUfaNRgW7v_TWFUXo"
+  # MERCHANT_SEND_MID_LABEL_SHEET_ID: "1_8sm8QciAU3T8oDlNS1Pfj-GQlmlJBrAi1TYdnnMlkw"
+  # MERCHANT_EXCLUDED_SHEET_ID: "1orVBlPP77HTt9d8x-lC1Oo5xrPp0r1FgVUQ-43DYqYc"
+
+# Compute resources
+compute:
+  machine_type: n1-standard-4
+  accelerator_type: null  # Set to GPU type if needed
+  accelerator_count: 0
+
+# Service account for execution
+service_account: YOUR_SERVICE_ACCOUNT@your-project-id.iam.gserviceaccount.com
+
+# Execution timeout (in seconds)
+timeout: 3600
+
+# Retry configuration
+retry:
+  max_attempts: 3
+  initial_delay_seconds: 60
+  max_delay_seconds: 300
+  multiplier: 2.0
