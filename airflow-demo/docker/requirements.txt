@@ -13,3 +13,6 @@ db-dtypes==1.4.3
 # Data processing
 pandas==2.3.3
 numpy==2.3.3
+
+# GCS access
+google-cloud-storage==3.40

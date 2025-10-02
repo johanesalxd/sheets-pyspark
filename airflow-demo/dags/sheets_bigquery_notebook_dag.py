@@ -96,6 +96,7 @@ with DAG(
             "oauth2client",
             "bigframes",
             "db-dtypes",
+            "google-cloud-storage",
         ],
         op_kwargs={
             "gcp_project": PROJECT_ID,
