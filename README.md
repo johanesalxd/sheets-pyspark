@@ -16,7 +16,7 @@ This project demonstrates using Google Sheets as a data source for PySpark sessi
 │   ├── README.md               # Demo documentation
 │   ├── dags/                   # Airflow DAG definitions
 │   ├── notebooks/              # Production-ready notebooks
-│   ├── config/                 # Configuration files
+│   ├── config/                 # Python dependencies for container
 │   └── setup/                  # Setup scripts
 ├── sample_data/                # Sample CSV files
 │   ├── legacy_charges.csv

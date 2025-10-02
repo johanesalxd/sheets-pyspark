@@ -8,12 +8,9 @@ Author: Demo
 Project: your-project-id
 """
 
-from datetime import datetime
 from datetime import timedelta
 
 from airflow import DAG
-from airflow.providers.google.cloud.operators.gcs import \
-    GCSCreateBucketOperator
 from airflow.providers.google.cloud.operators.vertex_ai.custom_job import \
     CreateCustomTrainingJobOperator
 from airflow.utils.dates import days_ago
@@ -98,26 +95,6 @@ with DAG(
 
     # Task dependencies (if you have multiple tasks)
     execute_notebook
-
-
-# Alternative approach using bash operator to run papermill directly
-# This is simpler but requires Cloud Composer to have the right packages
-"""
-from airflow.operators.bash import BashOperator
-
-execute_notebook_simple = BashOperator(
-    task_id='execute_notebook_with_papermill',
-    bash_command=f'''
-        papermill \
-            {GCS_NOTEBOOK_PATH} \
-            {GCS_OUTPUT_PATH}output-{{{{ ds }}}}.ipynb \
-            -p project_id {PROJECT_ID} \
-            -p region {REGION} \
-            -p execution_date {{{{ ds }}}}
-    ''',
-    dag=dag,
-)
-"""
 
 # For the simplest demo, you could also use a Python operator
 """

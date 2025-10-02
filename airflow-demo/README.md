@@ -12,8 +12,7 @@ airflow-demo/
 ├── notebooks/
 │   └── sheets_bigquery_scheduled.ipynb         # Production-ready notebook
 ├── config/
-│   ├── requirements.txt                        # Python dependencies
-│   └── notebook_execution_config.yaml          # Execution configuration
+│   └── requirements.txt                        # Python dependencies for container
 └── setup/
     └── setup_vertex_ai.sh                      # GCP setup script
 ```
