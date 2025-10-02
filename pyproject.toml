@@ -9,6 +9,7 @@ dependencies = [
     "dataproc-spark-connect",
     "bigframes",
     "db-dtypes",
-    "apache-airflow>=2.8.0",
-    "apache-airflow-providers-google>=18.0.0",
+    "apache-airflow",
+    "apache-airflow-providers-google",
+    "google-cloud-storage",
 ]

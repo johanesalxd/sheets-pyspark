@@ -4003,6 +4003,7 @@ dependencies = [
     { name = "bigframes" },
     { name = "dataproc-spark-connect" },
     { name = "db-dtypes" },
+    { name = "google-cloud-storage" },
     { name = "gspread" },
     { name = "ipykernel" },
     { name = "oauth2client" },
@@ -4010,11 +4011,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-airflow", specifier = ">=2.8.0" },
-    { name = "apache-airflow-providers-google", specifier = ">=18.0.0" },
+    { name = "apache-airflow" },
+    { name = "apache-airflow-providers-google" },
     { name = "bigframes" },
     { name = "dataproc-spark-connect" },
     { name = "db-dtypes" },
+    { name = "google-cloud-storage" },
     { name = "gspread" },
     { name = "ipykernel" },
     { name = "oauth2client" },
