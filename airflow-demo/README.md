@@ -1,10 +1,10 @@
 # Airflow Notebook Scheduling Demo
 
-Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with Vertex AI Workbench Executor.
+Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with PapermillOperator.
 
 ## Overview
 
-This demo shows how to schedule notebook execution in GCP using Airflow's `PythonOperator` with the Vertex AI Workbench Executor API. The solution provides automated, production-ready notebook scheduling using GCP-native services.
+This demo shows how to schedule notebook execution in GCP using Airflow's `PapermillOperator`. The solution executes notebooks directly on Cloud Composer workers using Papermill, providing a simple and production-ready approach to notebook scheduling.
 
 ## Project Structure
 
@@ -13,11 +13,11 @@ airflow-demo/
 ├── README.md                                    # This file
 ├── requirements.txt                             # Python dependencies for Composer
 ├── dags/
-│   └── sheets_bigquery_notebook_dag.py         # Airflow DAG
+│   └── sheets_bigquery_notebook_dag.py         # Airflow DAG using PapermillOperator
 ├── notebooks/
-│   └── sheets_bigquery_scheduled.ipynb         # Notebook with env var support
+│   └── sheets_bigquery_scheduled.ipynb         # Notebook with Papermill parameters
 └── setup/
-    └── setup_workbench.sh                      # Complete setup script
+    └── setup.sh                                # Complete setup script
 ```
 
 ## Quick Start
@@ -33,16 +33,15 @@ airflow-demo/
 
 ```bash
 cd airflow-demo/setup
-./setup_workbench.sh your-project-id
+./setup.sh your-project-id
 ```
 
 This command:
-1. Enables required APIs
-2. Creates service account with IAM roles
-3. Creates GCS bucket and directories
-4. Uploads notebook and credentials to GCS
-5. Deploys DAG to Cloud Composer
-6. Installs required Python packages in Composer
+1. Enables required APIs (BigQuery, Storage, Composer)
+2. Creates GCS bucket and directories
+3. Uploads notebook and credentials to GCS
+4. Deploys DAG to Cloud Composer
+5. Installs required Python packages in Composer
 
 ## Execution
 
@@ -69,12 +68,16 @@ gsutil ls gs://your-project-id-notebooks/
 
 # Notebook file
 gsutil ls gs://your-project-id-notebooks/notebooks/
+
+# Output notebooks
+gsutil ls gs://your-project-id-notebooks/notebook-outputs/
 ```
 
 ## Monitoring
 
 - **Airflow UI:** DAG status and logs
-- **Cloud Logging:** Detailed execution logs
+- **GCS:** Output notebooks in `notebook-outputs/` folder
+- **BigQuery:** Check temp tables created by notebook
 
 ## How It Works
 
@@ -82,52 +85,51 @@ gsutil ls gs://your-project-id-notebooks/notebooks/
 
 ```
 Airflow DAG (Cloud Composer)
-  → PythonOperator
-    → execute_notebook() function
-      → notebooks_v1.NotebookServiceClient
-        → create_execution() API call
-          → Vertex AI Workbench Executor
-            → Executes notebook on managed compute
-              → Saves output to GCS
+  → PapermillOperator
+    → Executes notebook on Composer worker
+      → Papermill injects parameters
+        → Notebook runs with injected values
+          → Saves output to GCS
 ```
 
 ### Implementation
 
-The DAG uses a Python function with the Notebooks API:
+The DAG uses PapermillOperator to execute notebooks directly on Composer workers:
 
 ```python
-from airflow.operators.python import PythonOperator
-from google.cloud import notebooks_v1
+from airflow.providers.papermill.operators.papermill import PapermillOperator
 
-def execute_notebook(**context):
-    client = notebooks_v1.NotebookServiceClient()
-    operation = client.create_execution(
-        parent=f"projects/{project_id}/locations/{region}",
-        execution_id=execution_id,
-        execution={
-            "execution_template": {
-                "input_notebook_file": notebook_path,
-                "output_notebook_folder": output_path,
-                "service_account": service_account,
-                "container_image_uri": "gcr.io/deeplearning-platform-release/base-cpu:latest",
-            }
-        }
-    )
-    return operation.result()
-
-run_notebook = PythonOperator(
-    task_id='execute_notebook',
-    python_callable=execute_notebook,
+run_notebook = PapermillOperator(
+    task_id="execute_sheets_bigquery_notebook",
+    input_nb="gs://PROJECT-notebooks/notebooks/sheets_bigquery_scheduled.ipynb",
+    output_nb="gs://PROJECT-notebooks/notebook-outputs/{{ ds }}/output_{{ ts_nodash }}.ipynb",
+    parameters={
+        "GCP_PROJECT": PROJECT_ID,
+        "GCP_REGION": REGION,
+    },
 )
 ```
 
-**Configuration:**
-- **Container Image:** `gcr.io/deeplearning-platform-release/base-cpu:latest` (includes Python, pandas, BigQuery libraries)
-- **Machine Type:** `n1-standard-4` (4 vCPUs, 15 GB RAM)
+### Key Features
+
+- **Simple:** No separate compute infrastructure needed
+- **Integrated:** Runs directly on Composer workers
+- **Parameterized:** Papermill injects parameters at runtime
+- **Traceable:** Output notebooks saved to GCS with timestamps
+
+### Notebook Parameters
+
+The notebook has a parameters cell that Papermill injects values into:
+
+```python
+# Parameters (injected by Papermill)
+GCP_PROJECT = "your-project-id"  # Will be overridden by Airflow
+GCP_REGION = "us-central1"  # Will be overridden by Airflow
+```
 
 ## Resources
 
-- [Vertex AI Workbench Documentation](https://cloud.google.com/vertex-ai/docs/workbench/instances/introduction)
-- [Schedule Notebook Runs](https://cloud.google.com/vertex-ai/docs/workbench/instances/schedule-notebook-run-quickstart)
+- [Papermill Documentation](https://papermill.readthedocs.io/)
+- [Airflow Papermill Provider](https://airflow.apache.org/docs/apache-airflow-providers-papermill/stable/index.html)
 - [Cloud Composer Documentation](https://cloud.google.com/composer/docs)
-- [Airflow Vertex AI Provider](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/operators/cloud/vertex_ai.html)
+- [BigQuery Python Client](https://cloud.google.com/python/docs/reference/bigquery/latest)

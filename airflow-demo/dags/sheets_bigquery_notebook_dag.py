@@ -1,80 +1,27 @@
 """
-Airflow DAG for scheduling BigQuery notebook execution using Vertex AI Workbench.
+Airflow DAG for scheduling BigQuery notebook execution using PapermillOperator.
 
-This DAG schedules notebook execution in GCP using the Vertex AI Workbench Executor API
-with Airflow's PythonOperator.
+This DAG executes notebooks directly on Cloud Composer workers using Papermill.
 
 Author: Demo
-Project: Configurable via GCP_PROJECT environment variable
+Project: Configurable via Airflow variables
 """
 
 from datetime import timedelta
 import os
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.utils.dates import days_ago
-from google.cloud import notebooks_v1
 
 # Configuration - Uses Cloud Composer built-in project variable
-PROJECT_ID = os.getenv("GCP_PROJECT")
+PROJECT_ID = os.getenv("GCP_PROJECT", "your-project-id")
 REGION = "us-central1"
 
 # GCS paths
 BUCKET_NAME = f"{PROJECT_ID}-notebooks"
-GCS_NOTEBOOK_PATH = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
-GCS_OUTPUT_PATH = f"gs://{BUCKET_NAME}/notebook-outputs/"
-
-# Service account
-SERVICE_ACCOUNT = f"notebook-executor@{PROJECT_ID}.iam.gserviceaccount.com"
-
-
-def execute_notebook(**context):
-    """Execute notebook using Vertex AI Workbench Executor API.
-
-    Args:
-        **context: Airflow context containing execution parameters.
-
-    Returns:
-        Execution ID of the completed notebook run.
-
-    Raises:
-        RuntimeError: If notebook execution fails.
-    """
-    project_id = context['params']['project_id']
-    region = context['params']['region']
-    notebook_path = context['params']['notebook_path']
-    output_path = context['params']['output_path']
-    service_account = context['params']['service_account']
-
-    client = notebooks_v1.NotebookServiceClient()
-    parent = f"projects/{project_id}/locations/{region}"
-
-    # Use timestamp for unique execution ID (allows multiple runs per day)
-    execution_id = f"execution-{context['ts_nodash']}"
-
-    operation = client.create_execution(
-        parent=parent,
-        execution_id=execution_id,
-        execution={
-            "execution_template": {
-                "input_notebook_file": notebook_path,
-                "output_notebook_folder": output_path,
-                "service_account": service_account,
-                "container_image_uri": "gcr.io/deeplearning-platform-release/base-cpu:latest",
-                "master_type": "n1-standard-4",
-            }
-        }
-    )
-
-    response = operation.result()
-
-    if response.state != notebooks_v1.Execution.State.SUCCEEDED:
-        raise RuntimeError(
-            f"Notebook execution failed with state: {response.state}")
-
-    return execution_id
-
+INPUT_NOTEBOOK = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
+OUTPUT_FOLDER = f"gs://{BUCKET_NAME}/notebook-outputs"
 
 # Default arguments for the DAG
 default_args = {
@@ -91,23 +38,19 @@ default_args = {
 with DAG(
     dag_id="sheets_bigquery_notebook_dag",
     default_args=default_args,
-    description="Execute BigQuery notebook using Vertex AI Workbench (manual trigger only)",
+    description="Execute BigQuery notebook using Papermill on Composer workers",
     schedule_interval=None,  # Manual trigger only
     start_date=days_ago(1),
     catchup=False,
-    tags=["bigquery", "notebook", "vertex-ai", "workbench", "demo"],
+    tags=["bigquery", "notebook", "papermill", "demo"],
 ) as dag:
 
-    run_notebook = PythonOperator(
+    run_notebook = PapermillOperator(
         task_id="execute_sheets_bigquery_notebook",
-        python_callable=execute_notebook,
-        params={
-            "project_id": PROJECT_ID,
-            "region": REGION,
-            "notebook_path": GCS_NOTEBOOK_PATH,
-            "output_path": GCS_OUTPUT_PATH,
-            "service_account": SERVICE_ACCOUNT,
+        input_nb=INPUT_NOTEBOOK,
+        output_nb=f"{OUTPUT_FOLDER}/{{{{ ds }}}}/output_{{{{ ts_nodash }}}}.ipynb",
+        parameters={
+            "GCP_PROJECT": PROJECT_ID,
+            "GCP_REGION": REGION,
         },
     )
-
-    run_notebook

@@ -1,1 +1,1 @@
-google-cloud-notebooks==1.0.0
+apache-airflow-providers-papermill>=3.11.3
