@@ -20,9 +20,8 @@ from airflow.operators.python import PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 
 # Configuration - Uses Airflow's native configuration
-PROJECT_ID = conf.get("core", "project_id", fallback=os.getenv(
-    "GCP_PROJECT", "your-project-id"))
-REGION = "us-central1"
+PROJECT_ID = conf.get("core", "project_id")
+REGION = conf.get("core", "default_region")
 
 # GCS paths
 BUCKET_NAME = f"{PROJECT_ID}-notebooks"

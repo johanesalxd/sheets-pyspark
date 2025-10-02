@@ -6,6 +6,13 @@ Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with P
 
 This demo shows how to schedule notebook execution in GCP using Airflow with isolated virtual environments per task. The solution runs on Cloud Composer workers while providing complete package isolation, making it cost-effective and flexible for different package requirements per DAG.
 
+**Key Features:**
+- Isolated environment per task
+- Different packages per DAG
+- Runs on Composer workers (cost-effective)
+- No cluster management
+- Production-ready
+
 ## Project Structure
 
 ```
@@ -18,46 +25,6 @@ airflow-demo/
 └── setup/
     └── setup.sh                                # Complete setup script
 ```
-
-## Comparison to Databricks
-
-### Databricks Submit Run Operator
-```python
-from airflow.providers.databricks.operators.databricks import DatabricksSubmitRunOperator
-
-run_notebook = DatabricksSubmitRunOperator(
-    task_id="run_notebook",
-    notebook_task={
-        "notebook_path": "/path/to/notebook",
-        "base_parameters": {"param1": "value1"}
-    },
-    new_cluster={...}
-)
-```
-
-### GCP PythonVirtualenvOperator (This Demo)
-```python
-from airflow.operators.python import PythonVirtualenvOperator
-
-def run_notebook(gcp_project, gcp_region, input_nb, output_nb):
-    import papermill as pm
-    pm.execute_notebook(input_nb, output_nb,
-                       parameters={"GCP_PROJECT": gcp_project})
-
-run_notebook = PythonVirtualenvOperator(
-    task_id="execute_notebook",
-    python_callable=run_notebook,
-    requirements=["papermill", "gspread", "bigframes"],  # ← Isolated!
-    op_kwargs={...}
-)
-```
-
-**Key Features:**
-- ✅ Isolated environment per task
-- ✅ Different packages per DAG
-- ✅ Runs on Composer workers (cost-effective)
-- ✅ No cluster management
-- ✅ Production-ready
 
 ## Quick Start
 
@@ -205,15 +172,6 @@ GCP_REGION = "us-central1"  # Will be overridden by Airflow
 - **Clean State:** Each execution starts with a fresh environment
 - **Easy Updates:** Change packages without affecting other DAGs
 - **Cost-Effective:** No need for separate compute resources
-
-## Alternative Approaches
-
-| Approach | Isolation | Cost | Complexity | Best For |
-|----------|-----------|------|------------|----------|
-| **PythonVirtualenvOperator** | ✅ Per task | $ | Low | This demo ✅ |
-| KubernetesPodOperator | ✅ Complete | $$ | Medium | Heavy workloads |
-| Vertex AI Workbench | ✅ Complete | $$$ | High | ML compute |
-| PapermillOperator | ❌ Shared | $ | Low | Single DAG |
 
 ## Resources
 

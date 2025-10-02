@@ -72,12 +72,13 @@ The core logic is within the `sheets_pyspark.ipynb` notebook. It demonstrates ho
 
 ### Airflow Notebook Scheduling Demo
 
-The `airflow-demo/` directory contains a production-ready solution for scheduling notebook execution using Cloud Composer (Airflow) with Vertex AI Workbench Executor.
+The `airflow-demo/` directory contains a production-ready solution for scheduling notebook execution using Cloud Composer (Airflow) with PythonVirtualenvOperator.
 
 **Features:**
 - One-command setup script
-- Automated notebook scheduling
-- GCP-native integration
+- Isolated virtual environments per task
+- Package isolation using PythonVirtualenvOperator
+- Cost-effective execution on Composer workers
 - Idempotent deployment
 
 **See [airflow-demo/README.md](airflow-demo/README.md) for complete setup and usage instructions.**
