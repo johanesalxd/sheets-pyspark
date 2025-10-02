@@ -1720,6 +1720,22 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-notebooks"
+version = "1.13.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpc-google-iam-v1" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/3b/8c15cf6e8d0fc6d56a0ab6491b783d05092a2ca28850a004b1b6e10438c5/google_cloud_notebooks-1.13.3.tar.gz", hash = "sha256:9be4d6d63a3ef244a9b2db3ad7b51124a827d5c80892c69019eba345fe1bf5ee", size = 361686, upload-time = "2025-06-11T23:33:49.807Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/f7/ce755e02426844ef91467f292afce1fdf46958dd0e9fb13ad7badf9d1912/google_cloud_notebooks-1.13.3-py3-none-any.whl", hash = "sha256:3c3b282791388701c2eba04a19c33cdc9bc51bdaddd9bc7defd763b9ea193f6a", size = 302339, upload-time = "2025-06-11T23:33:48.303Z" },
+]
+
+[[package]]
 name = "google-cloud-orchestration-airflow"
 version = "1.17.5"
 source = { registry = "https://pypi.org/simple" }
@@ -4003,6 +4019,7 @@ dependencies = [
     { name = "bigframes" },
     { name = "dataproc-spark-connect" },
     { name = "db-dtypes" },
+    { name = "google-cloud-notebooks" },
     { name = "gspread" },
     { name = "ipykernel" },
     { name = "oauth2client" },
@@ -4017,6 +4034,7 @@ requires-dist = [
     { name = "bigframes" },
     { name = "dataproc-spark-connect" },
     { name = "db-dtypes" },
+    { name = "google-cloud-notebooks", specifier = ">=1.0.0" },
     { name = "gspread" },
     { name = "ipykernel" },
     { name = "oauth2client" },
