@@ -159,38 +159,23 @@ gcloud composer environments run $COMPOSER_ENV \
 echo "Airflow Variables set successfully!"
 
 # Check and install apache-airflow-providers-google if needed
-echo "[10/11] Checking apache-airflow-providers-google version..."
+echo "[10/11] Checking apache-airflow-providers-google..."
 
-CURRENT_VERSION=$(gcloud composer environments run $COMPOSER_ENV \
+CURRENT_VERSION=$(gcloud composer environments describe $COMPOSER_ENV \
     --location=$COMPOSER_LOCATION \
-    list_packages 2>/dev/null | grep "apache-airflow-providers-google" | awk '{print $2}' || echo "not-installed")
+    --format="value(config.softwareConfig.pypiPackages['apache-airflow-providers-google'])" 2>/dev/null)
 
-REQUIRED_VERSION="18.0.0"
-
-echo "Current version: $CURRENT_VERSION"
-echo "Required version: >=$REQUIRED_VERSION"
-
-if [ "$CURRENT_VERSION" = "not-installed" ]; then
-    echo "Provider not installed. Installing apache-airflow-providers-google>=$REQUIRED_VERSION..."
+if [ -z "$CURRENT_VERSION" ]; then
+    echo "Provider not installed. Installing apache-airflow-providers-google>=18.0.0..."
     echo "Note: This may take 10-15 minutes..."
 
     gcloud composer environments update $COMPOSER_ENV \
         --location=$COMPOSER_LOCATION \
-        --update-pypi-package apache-airflow-providers-google>=$REQUIRED_VERSION
+        --update-pypi-package apache-airflow-providers-google>=18.0.0
 
     echo "Provider installed successfully!"
-elif [ "$(printf '%s\n' "$REQUIRED_VERSION" "$CURRENT_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
-    echo "Current version $CURRENT_VERSION is older than required $REQUIRED_VERSION"
-    echo "Upgrading apache-airflow-providers-google to >=$REQUIRED_VERSION..."
-    echo "Note: This may take 10-15 minutes..."
-
-    gcloud composer environments update $COMPOSER_ENV \
-        --location=$COMPOSER_LOCATION \
-        --update-pypi-package apache-airflow-providers-google>=$REQUIRED_VERSION
-
-    echo "Provider upgraded successfully!"
 else
-    echo "apache-airflow-providers-google $CURRENT_VERSION is already installed (>=$REQUIRED_VERSION)"
+    echo "apache-airflow-providers-google is already installed: $CURRENT_VERSION"
     echo "Skipping installation to save time"
 fi
 
