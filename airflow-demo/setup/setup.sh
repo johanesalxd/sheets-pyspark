@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup script for Cloud Composer notebook execution with PapermillOperator
+# Setup script for PythonVirtualenvOperator with Cloud Composer
 # Usage: ./setup.sh [PROJECT_ID]
 # If PROJECT_ID is not provided, uses default: your-project-id
 
@@ -15,7 +15,7 @@ COMPOSER_LOCATION="us-central1"
 BUCKET_NAME="${PROJECT_ID}-notebooks"
 
 echo "=========================================="
-echo "Setup for Papermill Notebook Execution"
+echo "Setup for PythonVirtualenvOperator"
 echo "=========================================="
 echo "Project ID: $PROJECT_ID"
 echo "Region: $REGION"
@@ -84,38 +84,6 @@ fi
 echo "Uploading DAG to: $COMPOSER_BUCKET/dags/"
 gsutil cp dags/sheets_bigquery_notebook_dag.py $COMPOSER_BUCKET/dags/
 
-# Install Python packages from requirements.txt
-if [ -f "requirements.txt" ]; then
-    echo "Checking if packages from requirements.txt are installed..."
-    INSTALLED_PACKAGES=$(gcloud composer environments describe $COMPOSER_ENV \
-        --location=$COMPOSER_LOCATION \
-        --format="value(config.softwareConfig.pypiPackages)")
-
-    NEEDS_INSTALL=false
-    while IFS= read -r package; do
-        # Skip empty lines and comments
-        [[ -z "$package" || "$package" =~ ^#.* ]] && continue
-        package_name=$(echo "$package" | cut -d'=' -f1 | cut -d'>' -f1 | cut -d'<' -f1 | tr -d ' ')
-        if ! echo "$INSTALLED_PACKAGES" | grep -q "$package_name"; then
-            NEEDS_INSTALL=true
-            break
-        fi
-    done < requirements.txt
-
-    if [ "$NEEDS_INSTALL" = true ]; then
-        echo "Installing packages from requirements.txt in Cloud Composer..."
-        gcloud composer environments update $COMPOSER_ENV \
-            --location=$COMPOSER_LOCATION \
-            --update-pypi-packages-from-file requirements.txt \
-            --quiet
-        echo "Package installation initiated (this may take a few minutes)"
-    else
-        echo "All packages from requirements.txt already installed, skipping installation"
-    fi
-else
-    echo "WARNING: requirements.txt not found, skipping package installation"
-fi
-
 echo ""
 echo "=========================================="
 echo "Setup completed successfully!"
@@ -131,7 +99,12 @@ echo "Resources Created:"
 echo "  ✓ GCS bucket with directories"
 echo "  ✓ Notebook uploaded to GCS"
 echo "  ✓ DAG deployed to Cloud Composer"
-echo "  ✓ Python packages installed in Composer"
+echo ""
+echo "How It Works:"
+echo "  - PythonVirtualenvOperator creates isolated venv per task"
+echo "  - Packages (papermill, gspread, bigframes) installed in venv"
+echo "  - No package conflicts between DAGs"
+echo "  - Runs on Composer workers (cost-effective)"
 echo ""
 echo "Next Steps:"
 echo "1. Verify credentials are uploaded:"

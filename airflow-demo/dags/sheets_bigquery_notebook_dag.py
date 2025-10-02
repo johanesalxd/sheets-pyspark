@@ -1,7 +1,11 @@
 """
-Airflow DAG for scheduling BigQuery notebook execution using PapermillOperator.
+Airflow DAG for scheduling BigQuery notebook execution using PythonVirtualenvOperator.
 
-This DAG executes notebooks directly on Cloud Composer workers using Papermill.
+This DAG executes notebooks in isolated virtual environments on Cloud Composer workers,
+providing package isolation per task while remaining cost-effective.
+
+The DAG creates a fresh virtualenv for each execution with specified packages,
+ensuring no conflicts between different notebook jobs.
 
 Author: Demo
 Project: Configurable via Airflow variables
@@ -11,11 +15,13 @@ from datetime import timedelta
 import os
 
 from airflow import DAG
-from airflow.providers.papermill.operators.papermill import PapermillOperator
+from airflow.configuration import conf
+from airflow.operators.python import PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 
-# Configuration - Uses Cloud Composer built-in project variable
-PROJECT_ID = os.getenv("GCP_PROJECT", "your-project-id")
+# Configuration - Uses Airflow's native configuration
+PROJECT_ID = conf.get("core", "project_id", fallback=os.getenv(
+    "GCP_PROJECT", "your-project-id"))
 REGION = "us-central1"
 
 # GCS paths
@@ -34,23 +40,67 @@ default_args = {
     "execution_timeout": timedelta(hours=1),
 }
 
+
+def run_notebook_in_venv(gcp_project: str, gcp_region: str, input_nb: str, output_nb: str):
+    """
+    Executes a notebook using Papermill in an isolated virtual environment.
+
+    This function runs in a fresh virtualenv with only the specified packages,
+    providing complete isolation from other tasks and DAGs.
+
+    Args:
+        gcp_project: GCP project ID for BigQuery operations
+        gcp_region: GCP region for BigQuery operations
+        input_nb: GCS path to input notebook
+        output_nb: GCS path for output notebook
+
+    Returns:
+        str: Path to the executed output notebook
+    """
+    import papermill as pm
+
+    # Execute notebook with parameters
+    result = pm.execute_notebook(
+        input_path=input_nb,
+        output_path=output_nb,
+        parameters={
+            "GCP_PROJECT": gcp_project,
+            "GCP_REGION": gcp_region,
+        },
+        progress_bar=False,
+    )
+
+    print(f"Notebook executed successfully: {output_nb}")
+    return output_nb
+
+
 # Define the DAG
 with DAG(
     dag_id="sheets_bigquery_notebook_dag",
     default_args=default_args,
-    description="Execute BigQuery notebook using Papermill on Composer workers",
+    description="Execute BigQuery notebook in isolated virtualenv on Composer workers",
     schedule_interval=None,  # Manual trigger only
     start_date=days_ago(1),
     catchup=False,
-    tags=["bigquery", "notebook", "papermill", "demo"],
+    tags=["bigquery", "notebook", "virtualenv", "isolated", "demo"],
 ) as dag:
 
-    run_notebook = PapermillOperator(
+    run_notebook = PythonVirtualenvOperator(
         task_id="execute_sheets_bigquery_notebook",
-        input_nb=INPUT_NOTEBOOK,
-        output_nb=f"{OUTPUT_FOLDER}/{{{{ ds }}}}/output_{{{{ ts_nodash }}}}.ipynb",
-        parameters={
-            "GCP_PROJECT": PROJECT_ID,
-            "GCP_REGION": REGION,
+        python_callable=run_notebook_in_venv,
+        requirements=[
+            "papermill",
+            "ipykernel",
+            "gspread",
+            "oauth2client",
+            "bigframes",
+            "db-dtypes",
+        ],
+        op_kwargs={
+            "gcp_project": PROJECT_ID,
+            "gcp_region": REGION,
+            "input_nb": INPUT_NOTEBOOK,
+            "output_nb": f"{OUTPUT_FOLDER}/{{{{ ds }}}}/output_{{{{ ts_nodash }}}}.ipynb",
         },
+        system_site_packages=False,  # Complete isolation
     )
