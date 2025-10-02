@@ -1,7 +1,30 @@
 #!/bin/bash
-# Setup script for PythonVirtualenvOperator with Cloud Composer
-# Usage: ./setup.sh [PROJECT_ID]
-# If PROJECT_ID is not provided, uses default: your-project-id
+# Setup script for PythonVirtualenvOperator with Cloud Composer.
+#
+# This script configures Cloud Composer to run notebooks using PythonVirtualenvOperator,
+# which creates isolated Python environments for each task execution.
+#
+# Operations performed:
+# - Enables required GCP APIs (Storage, BigQuery, Composer)
+# - Creates GCS bucket for notebooks and outputs
+# - Uploads notebook and credentials to GCS
+# - Deploys DAG to Cloud Composer
+# - Sets Airflow variables for DAG configuration
+#
+# Prerequisites:
+# - gcloud CLI installed and authenticated
+# - Cloud Composer environment already created
+# - Service account credentials file (drive-api.json) in parent directory
+#
+# Usage:
+#     ./setup.sh [PROJECT_ID]
+#
+# Args:
+#     PROJECT_ID: GCP project ID (optional, defaults to 'your-project-id')
+#
+# Exit codes:
+#     0: Success
+#     1: Error occurred (API enablement, bucket creation, or Composer operations)
 
 set -e
 
@@ -76,8 +99,9 @@ COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
     --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
 
 if [ -z "$COMPOSER_BUCKET" ]; then
-    echo "ERROR: Could not find Cloud Composer environment: $COMPOSER_ENV"
-    echo "Please verify the environment exists and try again"
+    echo "ERROR: Cloud Composer environment '$COMPOSER_ENV' not found in location '$COMPOSER_LOCATION'"
+    echo "Verify the environment exists with: gcloud composer environments list --locations=$COMPOSER_LOCATION"
+    echo "Or create it with: gcloud composer environments create $COMPOSER_ENV --location=$COMPOSER_LOCATION"
     exit 1
 fi
 
@@ -108,9 +132,9 @@ echo "  Composer Environment: $COMPOSER_ENV"
 echo "  GCS Bucket: gs://$BUCKET_NAME"
 echo ""
 echo "Resources Created:"
-echo "  ✓ GCS bucket with directories"
-echo "  ✓ Notebook uploaded to GCS"
-echo "  ✓ DAG deployed to Cloud Composer"
+echo "  - GCS bucket with directories"
+echo "  - Notebook uploaded to GCS"
+echo "  - DAG deployed to Cloud Composer"
 echo ""
 echo "How It Works:"
 echo "  - PythonVirtualenvOperator creates isolated venv per task"

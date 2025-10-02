@@ -1,7 +1,34 @@
 #!/bin/bash
-# Setup script for Vertex AI Custom Training with Cloud Composer
-# Usage: ./setup_vertex.sh [PROJECT_ID]
-# If PROJECT_ID is not provided, uses default: your-project-id
+# Setup script for Vertex AI Custom Training with Cloud Composer.
+#
+# This script configures Cloud Composer to run notebooks using Vertex AI Custom Training,
+# which executes notebooks in isolated Docker containers on dedicated compute resources.
+#
+# Operations performed:
+# - Enables required GCP APIs (Storage, BigQuery, Composer, Vertex AI, Artifact Registry)
+# - Creates Artifact Registry repository for Docker images
+# - Builds and pushes Docker image with notebook executor
+# - Creates GCS bucket for notebooks and outputs
+# - Uploads notebook and credentials to GCS
+# - Deploys DAG to Cloud Composer
+# - Sets Airflow variables for DAG configuration
+# - Installs/upgrades apache-airflow-providers-google if needed
+#
+# Prerequisites:
+# - gcloud CLI installed and authenticated
+# - Docker installed and running
+# - Cloud Composer environment already created
+# - Service account credentials file (drive-api.json) in parent directory
+#
+# Usage:
+#     ./setup_vertex.sh [PROJECT_ID]
+#
+# Args:
+#     PROJECT_ID: GCP project ID (optional, defaults to 'your-project-id')
+#
+# Exit codes:
+#     0: Success
+#     1: Error occurred (API enablement, Docker build, or Composer operations)
 
 set -e
 
@@ -110,8 +137,9 @@ COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
     --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
 
 if [ -z "$COMPOSER_BUCKET" ]; then
-    echo "ERROR: Could not find Cloud Composer environment: $COMPOSER_ENV"
-    echo "Please verify the environment exists and try again"
+    echo "ERROR: Cloud Composer environment '$COMPOSER_ENV' not found in location '$COMPOSER_LOCATION'"
+    echo "Verify the environment exists with: gcloud composer environments list --locations=$COMPOSER_LOCATION"
+    echo "Or create it with: gcloud composer environments create $COMPOSER_ENV --location=$COMPOSER_LOCATION"
     exit 1
 fi
 
@@ -144,7 +172,7 @@ echo "Required version: >=$REQUIRED_VERSION"
 
 if [ "$CURRENT_VERSION" = "not-installed" ]; then
     echo "Provider not installed. Installing apache-airflow-providers-google>=$REQUIRED_VERSION..."
-    echo "⏱️  This may take 10-15 minutes..."
+    echo "Note: This may take 10-15 minutes..."
 
     gcloud composer environments update $COMPOSER_ENV \
         --location=$COMPOSER_LOCATION \
@@ -154,7 +182,7 @@ if [ "$CURRENT_VERSION" = "not-installed" ]; then
 elif [ "$(printf '%s\n' "$REQUIRED_VERSION" "$CURRENT_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
     echo "Current version $CURRENT_VERSION is older than required $REQUIRED_VERSION"
     echo "Upgrading apache-airflow-providers-google to >=$REQUIRED_VERSION..."
-    echo "⏱️  This may take 10-15 minutes..."
+    echo "Note: This may take 10-15 minutes..."
 
     gcloud composer environments update $COMPOSER_ENV \
         --location=$COMPOSER_LOCATION \
@@ -162,7 +190,7 @@ elif [ "$(printf '%s\n' "$REQUIRED_VERSION" "$CURRENT_VERSION" | sort -V | head 
 
     echo "Provider upgraded successfully!"
 else
-    echo "✓ apache-airflow-providers-google $CURRENT_VERSION is already installed (>=$REQUIRED_VERSION)"
+    echo "apache-airflow-providers-google $CURRENT_VERSION is already installed (>=$REQUIRED_VERSION)"
     echo "Skipping installation to save time"
 fi
 
@@ -179,11 +207,11 @@ echo "  GCS Bucket: gs://$BUCKET_NAME"
 echo "  Container Image: $IMAGE_URI"
 echo ""
 echo "Resources Created:"
-echo "  ✓ Artifact Registry repository"
-echo "  ✓ Docker image built and pushed"
-echo "  ✓ GCS bucket with directories"
-echo "  ✓ Notebook uploaded to GCS"
-echo "  ✓ DAG deployed to Cloud Composer"
+echo "  - Artifact Registry repository"
+echo "  - Docker image built and pushed"
+echo "  - GCS bucket with directories"
+echo "  - Notebook uploaded to GCS"
+echo "  - DAG deployed to Cloud Composer"
 echo ""
 echo "How It Works:"
 echo "  - Submits notebook as Vertex AI Custom Training job"

@@ -1,11 +1,15 @@
-"""
-Airflow DAG for scheduling BigQuery notebook execution using PythonVirtualenvOperator.
+"""Airflow DAG for scheduling BigQuery notebook execution using PythonVirtualenvOperator.
 
 This DAG executes notebooks in isolated virtual environments on Cloud Composer workers,
 providing package isolation per task while remaining cost-effective.
 
 The DAG creates a fresh virtualenv for each execution with specified packages,
 ensuring no conflicts between different notebook jobs.
+
+Typical usage example:
+    Triggered manually or via API to execute notebooks on Composer workers.
+    Each execution runs in isolated virtualenv with fresh dependencies.
+    Cost-effective alternative to dedicated compute resources.
 
 Author: Demo
 Project: Configurable via Airflow variables
@@ -19,13 +23,13 @@ from airflow.operators.python import PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 
 # Configuration - Uses Airflow Variables (best practice for per-DAG isolation)
-PROJECT_ID = Variable.get("gcp_project_id")
-REGION = Variable.get("gcp_region", default_var="us-central1")
+PROJECT_ID: str = Variable.get("gcp_project_id")
+REGION: str = Variable.get("gcp_region", default_var="us-central1")
 
 # GCS paths
-BUCKET_NAME = f"{PROJECT_ID}-notebooks"
-INPUT_NOTEBOOK = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
-OUTPUT_FOLDER = f"gs://{BUCKET_NAME}/notebook-outputs"
+BUCKET_NAME: str = f"{PROJECT_ID}-notebooks"
+INPUT_NOTEBOOK: str = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
+OUTPUT_FOLDER: str = f"gs://{BUCKET_NAME}/notebook-outputs"
 
 # Default arguments for the DAG
 default_args = {
@@ -39,21 +43,20 @@ default_args = {
 }
 
 
-def run_notebook_in_venv(gcp_project: str, gcp_region: str, input_nb: str, output_nb: str):
-    """
-    Executes a notebook using Papermill in an isolated virtual environment.
+def run_notebook_in_venv(gcp_project: str, gcp_region: str, input_nb: str, output_nb: str) -> str:
+    """Executes a notebook using Papermill in an isolated virtual environment.
 
     This function runs in a fresh virtualenv with only the specified packages,
     providing complete isolation from other tasks and DAGs.
 
     Args:
-        gcp_project: GCP project ID for BigQuery operations
-        gcp_region: GCP region for BigQuery operations
-        input_nb: GCS path to input notebook
-        output_nb: GCS path for output notebook
+        gcp_project: GCP project ID for BigQuery operations.
+        gcp_region: GCP region for BigQuery operations.
+        input_nb: GCS path to input notebook.
+        output_nb: GCS path for output notebook.
 
     Returns:
-        str: Path to the executed output notebook
+        Path to the executed output notebook.
     """
     import papermill as pm
 

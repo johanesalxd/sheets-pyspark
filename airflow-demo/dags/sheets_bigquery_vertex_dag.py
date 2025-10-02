@@ -1,5 +1,4 @@
-"""
-Airflow DAG for scheduling BigQuery notebook execution using Vertex AI Custom Training.
+"""Airflow DAG for scheduling BigQuery notebook execution using Vertex AI Custom Training.
 
 This DAG executes notebooks on dedicated Vertex AI compute resources,
 providing a Databricks-style submit job experience with full isolation
@@ -7,6 +6,11 @@ and flexible compute options.
 
 The DAG submits a Custom Training job to Vertex AI that executes the notebook
 in a containerized environment with specified dependencies.
+
+Typical usage example:
+    Triggered manually or via API to execute notebooks on isolated compute.
+    Outputs are saved to GCS with execution date partitioning.
+    Provides Databricks-style submit job experience on GCP.
 
 Author: Demo
 Project: Configurable via Airflow variables
@@ -21,16 +25,16 @@ from airflow.providers.google.cloud.operators.vertex_ai.custom_job import \
 from airflow.utils.dates import days_ago
 
 # Configuration - Uses Airflow Variables (best practice for per-DAG isolation)
-PROJECT_ID = Variable.get("gcp_project_id")
-REGION = Variable.get("gcp_region", default_var="us-central1")
+PROJECT_ID: str = Variable.get("gcp_project_id")
+REGION: str = Variable.get("gcp_region", default_var="us-central1")
 
 # GCS paths
-BUCKET_NAME = f"{PROJECT_ID}-notebooks"
-INPUT_NOTEBOOK = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
-OUTPUT_FOLDER = f"gs://{BUCKET_NAME}/notebook-outputs-vertex"
+BUCKET_NAME: str = f"{PROJECT_ID}-notebooks"
+INPUT_NOTEBOOK: str = f"gs://{BUCKET_NAME}/notebooks/sheets_bigquery_scheduled.ipynb"
+OUTPUT_FOLDER: str = f"gs://{BUCKET_NAME}/notebook-outputs-vertex"
 
 # Container image (will be built and pushed by setup script)
-CONTAINER_IMAGE_URI = f"{REGION}-docker.pkg.dev/{PROJECT_ID}/notebooks/notebook-executor:latest"
+CONTAINER_IMAGE_URI: str = f"{REGION}-docker.pkg.dev/{PROJECT_ID}/notebooks/notebook-executor:latest"
 
 # Default arguments for the DAG
 default_args = {
