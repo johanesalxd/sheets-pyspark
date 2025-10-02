@@ -115,14 +115,37 @@ fi
 echo "Uploading DAG to: $COMPOSER_BUCKET/dags/"
 gsutil cp dags/sheets_bigquery_notebook_dag.py $COMPOSER_BUCKET/dags/
 
-# Install required Python package in Cloud Composer
-echo "Installing google-cloud-notebooks package in Cloud Composer..."
-gcloud composer environments update $COMPOSER_ENV \
-    --location=$COMPOSER_LOCATION \
-    --update-pypi-package google-cloud-notebooks==1.0.0 \
-    --quiet
+# Install Python packages from requirements.txt
+if [ -f "requirements.txt" ]; then
+    echo "Checking if packages from requirements.txt are installed..."
+    INSTALLED_PACKAGES=$(gcloud composer environments describe $COMPOSER_ENV \
+        --location=$COMPOSER_LOCATION \
+        --format="value(config.softwareConfig.pypiPackages)")
 
-echo "Package installation initiated (this may take a few minutes)"
+    NEEDS_INSTALL=false
+    while IFS= read -r package; do
+        # Skip empty lines and comments
+        [[ -z "$package" || "$package" =~ ^#.* ]] && continue
+        package_name=$(echo "$package" | cut -d'=' -f1 | cut -d'>' -f1 | cut -d'<' -f1 | tr -d ' ')
+        if ! echo "$INSTALLED_PACKAGES" | grep -q "$package_name"; then
+            NEEDS_INSTALL=true
+            break
+        fi
+    done < requirements.txt
+
+    if [ "$NEEDS_INSTALL" = true ]; then
+        echo "Installing packages from requirements.txt in Cloud Composer..."
+        gcloud composer environments update $COMPOSER_ENV \
+            --location=$COMPOSER_LOCATION \
+            --update-pypi-packages-from-file requirements.txt \
+            --quiet
+        echo "Package installation initiated (this may take a few minutes)"
+    else
+        echo "All packages from requirements.txt already installed, skipping installation"
+    fi
+else
+    echo "WARNING: requirements.txt not found, skipping package installation"
+fi
 
 echo ""
 echo "=========================================="

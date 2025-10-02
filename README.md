@@ -14,9 +14,9 @@ This project demonstrates using Google Sheets as a data source for PySpark sessi
 ├── uv.lock                     # Lock file for uv package manager
 ├── airflow-demo/               # Airflow notebook scheduling demo
 │   ├── README.md               # Demo documentation
+│   ├── requirements.txt        # Python dependencies for Composer
 │   ├── dags/                   # Airflow DAG definitions
 │   ├── notebooks/              # Production-ready notebooks
-│   ├── config/                 # Python dependencies for container
 │   └── setup/                  # Setup scripts
 ├── sample_data/                # Sample CSV files
 │   ├── legacy_charges.csv
@@ -70,11 +70,17 @@ The core logic is within the `sheets_pyspark.ipynb` notebook. It demonstrates ho
 3.  Read data from multiple Google Sheets into Spark DataFrames.
 4.  Perform SQL queries and analysis on the data.
 
-### Airflow Demo
+### Airflow Notebook Scheduling Demo
 
-The `airflow-demo/` directory contains a complete demonstration of scheduling notebook execution using Cloud Composer (Airflow). This provides a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+The `airflow-demo/` directory contains a production-ready solution for scheduling notebook execution using Cloud Composer (Airflow) with Vertex AI Workbench Executor.
 
-See [airflow-demo/README.md](airflow-demo/README.md) for detailed setup and usage instructions.
+**Features:**
+- One-command setup script
+- Automated notebook scheduling
+- GCP-native integration
+- Idempotent deployment
+
+**See [airflow-demo/README.md](airflow-demo/README.md) for complete setup and usage instructions.**
 
 ### Utility Scripts
 

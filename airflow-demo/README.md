@@ -10,7 +10,8 @@ This demo shows how to schedule notebook execution in GCP using Airflow's `Pytho
 
 ```
 airflow-demo/
-├── README.md                                   # This file
+├── README.md                                    # This file
+├── requirements.txt                             # Python dependencies for Composer
 ├── dags/
 │   └── sheets_bigquery_notebook_dag.py         # Airflow DAG
 ├── notebooks/
