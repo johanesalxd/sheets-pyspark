@@ -24,11 +24,11 @@ echo "=========================================="
 echo ""
 
 # Set the project
-echo "[1/5] Setting GCP project..."
+echo "[1/6] Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
 # Enable required APIs
-echo "[2/5] Enabling required APIs..."
+echo "[2/6] Enabling required APIs..."
 gcloud services enable \
     storage.googleapis.com \
     bigquery.googleapis.com \
@@ -38,7 +38,7 @@ gcloud services enable \
 echo "APIs enabled successfully!"
 
 # Create GCS bucket
-echo "[3/5] Creating GCS bucket..."
+echo "[3/6] Creating GCS bucket..."
 if gsutil ls -b gs://$BUCKET_NAME &>/dev/null; then
     echo "Bucket gs://$BUCKET_NAME already exists"
 else
@@ -53,7 +53,7 @@ gsutil -m mkdir -p gs://$BUCKET_NAME/notebook-outputs/ 2>/dev/null || true
 gsutil -m mkdir -p gs://$BUCKET_NAME/credentials/ 2>/dev/null || true
 
 # Upload notebook to GCS
-echo "[4/5] Uploading notebook to GCS..."
+echo "[4/6] Uploading notebook to GCS..."
 cd "$(dirname "$0")/.."  # Go to airflow-demo directory
 gsutil cp notebooks/sheets_bigquery_scheduled.ipynb \
     gs://$BUCKET_NAME/notebooks/sheets_bigquery_scheduled.ipynb
@@ -70,7 +70,7 @@ else
 fi
 
 # Deploy DAG to Cloud Composer
-echo "[5/5] Deploying DAG to Cloud Composer..."
+echo "[5/6] Deploying DAG to Cloud Composer..."
 COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
     --location=$COMPOSER_LOCATION \
     --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
@@ -83,6 +83,18 @@ fi
 
 echo "Uploading DAG to: $COMPOSER_BUCKET/dags/"
 gsutil cp dags/sheets_bigquery_notebook_dag.py $COMPOSER_BUCKET/dags/
+
+# Set Airflow Variables for the DAG
+echo "[6/6] Setting Airflow Variables in Cloud Composer..."
+gcloud composer environments run $COMPOSER_ENV \
+    --location=$COMPOSER_LOCATION \
+    variables set -- gcp_project_id $PROJECT_ID
+
+gcloud composer environments run $COMPOSER_ENV \
+    --location=$COMPOSER_LOCATION \
+    variables set -- gcp_region $REGION
+
+echo "Airflow Variables set successfully!"
 
 echo ""
 echo "=========================================="

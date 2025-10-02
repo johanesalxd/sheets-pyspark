@@ -12,16 +12,15 @@ Project: Configurable via Airflow variables
 """
 
 from datetime import timedelta
-import os
 
 from airflow import DAG
-from airflow.configuration import conf
+from airflow.models import Variable
 from airflow.operators.python import PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 
-# Configuration - Uses Airflow's native configuration
-PROJECT_ID = conf.get("core", "project_id")
-REGION = conf.get("core", "default_region")
+# Configuration - Uses Airflow Variables (best practice for per-DAG isolation)
+PROJECT_ID = Variable.get("gcp_project_id")
+REGION = Variable.get("gcp_region", default_var="us-central1")
 
 # GCS paths
 BUCKET_NAME = f"{PROJECT_ID}-notebooks"

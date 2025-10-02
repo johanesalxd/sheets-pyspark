@@ -47,6 +47,7 @@ This command:
 2. Creates GCS bucket and directories
 3. Uploads notebook and credentials to GCS
 4. Deploys DAG to Cloud Composer
+5. Sets Airflow Variables (`gcp_project_id`, `gcp_region`)
 
 ## Execution
 
@@ -77,6 +78,25 @@ gsutil ls gs://your-project-id-notebooks/notebooks/
 # Output notebooks
 gsutil ls gs://your-project-id-notebooks/notebook-outputs/
 ```
+
+## Configuration
+
+The DAG uses **Airflow Variables** for configuration (following Airflow best practices):
+
+- **`gcp_project_id`**: GCP project ID for BigQuery operations
+- **`gcp_region`**: GCP region (default: `us-central1`)
+
+These variables are automatically set by the setup script. You can view/modify them in:
+- **Airflow UI:** Admin → Variables
+- **CLI:** `gcloud composer environments run composer-demo --location us-central1 variables list`
+
+### Why Airflow Variables?
+
+Following [Airflow best practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html#airflow-variables):
+- ✅ **Per-DAG isolation**: Different DAGs can use different projects/regions
+- ✅ **Easy to change**: Modify in UI without redeploying
+- ✅ **Visible**: See all configurations in one place
+- ✅ **Standard practice**: Recommended by Airflow documentation
 
 ## Monitoring
 
