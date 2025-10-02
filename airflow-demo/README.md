@@ -1,33 +1,33 @@
 # Airflow Notebook Scheduling Demo
 
-Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow), providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
+Demonstrates scheduling BigQuery notebooks using Cloud Composer (Airflow) with Vertex AI Workbench Executor, providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
 
 ## Overview
 
-This demo uses Vertex AI Custom Training Jobs to execute notebooks via Papermill in a containerized environment, similar to how Databricks schedules notebook execution.
+This demo uses Airflow's `PythonOperator` with the Vertex AI Workbench Executor API to schedule notebook execution, providing a GCP equivalent to Databricks' `DatabricksSubmitRunOperator`.
 
 **Comparison:**
 
 | Aspect | Databricks | GCP (This Demo) |
 |--------|-----------|-----------------|
-| Operator | `DatabricksSubmitRunOperator` | `CreateCustomTrainingJobOperator` |
-| Execution | Databricks Runtime | Vertex AI + Docker Container |
+| Operator | `DatabricksSubmitRunOperator` | `PythonOperator` + Notebooks API |
+| Execution | Databricks Runtime | Vertex AI Workbench Executor |
 | Integration | Databricks-specific | GCP-native services |
+| Complexity | Simple | Simple |
+
+Both approaches provide clean notebook scheduling in Airflow.
 
 ## Project Structure
 
 ```
 airflow-demo/
 ├── README.md                                    # This file
-├── Dockerfile                                   # Container for notebook execution
 ├── dags/
 │   └── sheets_bigquery_notebook_dag.py         # Airflow DAG
 ├── notebooks/
 │   └── sheets_bigquery_scheduled.ipynb         # Notebook with env var support
-├── config/
-│   └── requirements.txt                        # Python dependencies
 └── setup/
-    └── setup_vertex_ai.sh                      # Complete setup script
+    └── setup_workbench.sh                      # Complete setup script
 ```
 
 ## Quick Start
@@ -36,7 +36,6 @@ airflow-demo/
 
 - GCP Project with billing enabled
 - Cloud Composer environment (e.g., `composer-demo`)
-- Docker installed locally
 - `gcloud` CLI configured
 - `drive-api.json` credentials in parent directory
 
@@ -44,28 +43,16 @@ airflow-demo/
 
 ```bash
 cd airflow-demo/setup
-./setup_vertex_ai.sh your-project-id
+./setup_workbench.sh your-project-id
 ```
 
 This command:
 1. Enables required APIs
 2. Creates service account with IAM roles
 3. Creates GCS bucket and directories
-4. Creates Artifact Registry repository
-5. Builds and pushes Docker container
-6. Uploads notebook and credentials to GCS
-7. Deploys DAG to Cloud Composer
-
-### Configuration
-
-To customize, edit `dags/sheets_bigquery_notebook_dag.py`:
-
-```python
-PROJECT_ID = "your-project-id"  # Change this
-REGION = "us-central1"
-```
-
-All paths are derived from `PROJECT_ID`.
+4. Uploads notebook and credentials to GCS
+5. Deploys DAG to Cloud Composer
+6. Installs required Python packages in Composer
 
 ## Execution
 
@@ -90,48 +77,76 @@ gcloud composer environments run composer-demo \
 # GCS bucket
 gsutil ls gs://your-project-id-notebooks/
 
-# Docker image
-gcloud artifacts docker images list \
-  us-central1-docker.pkg.dev/your-project-id/notebook-executor
+# Notebook file
+gsutil ls gs://your-project-id-notebooks/notebooks/
 ```
 
 ## Monitoring
 
 - **Airflow UI:** DAG status and logs
-- **Cloud Console:** Vertex AI job details
+- **Cloud Console:** Vertex AI Workbench executions
 - **Cloud Logging:** Detailed execution logs
+- **GCS:** Output notebooks in `notebook-outputs/` folder
 - **BigQuery:** Verify data in temp tables
 
 ## How It Works
 
-### Environment Variables
+### Architecture
 
-The notebook uses environment variables for configuration:
-
-**Set in DAG → Passed to Container → Read by Notebook**
-
-```python
-# In DAG (container_spec.env)
-{"name": "GCP_PROJECT", "value": "your-project-id"}
-
-# In Notebook
-project = os.getenv("GCP_PROJECT", "default-value")
+```
+Airflow DAG (Cloud Composer)
+  → PythonOperator
+    → execute_notebook() function
+      → notebooks_v1.NotebookServiceClient
+        → create_execution() API call
+          → Vertex AI Workbench Executor
+            → Executes notebook on managed compute
+              → Saves output to GCS
 ```
 
-**Available Variables:**
+## Comparison to Databricks
 
-| Variable | Purpose |
-|----------|---------|
-| `GCP_PROJECT` | BigQuery project ID |
-| `GCP_REGION` | BigQuery region |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON |
+### Databricks Approach
+```python
+from airflow.providers.databricks.operators.databricks import DatabricksSubmitRunOperator
 
-### Credentials
+run_notebook = DatabricksSubmitRunOperator(
+    task_id='run_notebook',
+    notebook_task={
+        'notebook_path': '/path/to/notebook',
+    }
+)
+```
 
-Credentials are uploaded to GCS and downloaded at runtime to `/tmp/drive-api.json` using `gsutil cp`.
+### GCP Approach (This Demo)
+```python
+from airflow.operators.python import PythonOperator
+from google.cloud import notebooks_v1
+
+def execute_notebook(**context):
+    client = notebooks_v1.NotebookServiceClient()
+    operation = client.create_execution(
+        parent=f"projects/{project_id}/locations/{region}",
+        execution_id=execution_id,
+        execution={
+            "execution_template": {
+                "input_notebook_file": notebook_path,
+            }
+        }
+    )
+    return operation.result()
+
+run_notebook = PythonOperator(
+    task_id='execute_notebook',
+    python_callable=execute_notebook,
+)
+```
+
+Both approaches provide clean, declarative notebook scheduling in Airflow.
 
 ## Resources
 
-- [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
+- [Vertex AI Workbench Documentation](https://cloud.google.com/vertex-ai/docs/workbench/instances/introduction)
+- [Schedule Notebook Runs](https://cloud.google.com/vertex-ai/docs/workbench/instances/schedule-notebook-run-quickstart)
 - [Cloud Composer Documentation](https://cloud.google.com/composer/docs)
-- [Papermill Documentation](https://papermill.readthedocs.io/)
+- [Airflow Vertex AI Provider](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/operators/cloud/vertex_ai.html)
