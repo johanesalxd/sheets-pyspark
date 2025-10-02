@@ -56,11 +56,11 @@ echo "=========================================="
 echo ""
 
 # Set the project
-echo "[1/11] Setting GCP project..."
+echo "[1/10] Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
 # Enable required APIs
-echo "[2/11] Enabling required APIs..."
+echo "[2/10] Enabling required APIs..."
 gcloud services enable \
     storage.googleapis.com \
     bigquery.googleapis.com \
@@ -72,7 +72,7 @@ gcloud services enable \
 echo "APIs enabled successfully!"
 
 # Create Artifact Registry repository
-echo "[3/11] Creating Artifact Registry repository..."
+echo "[3/10] Creating Artifact Registry repository..."
 if gcloud artifacts repositories describe $ARTIFACT_REGISTRY_REPO \
     --location=$REGION \
     --project=$PROJECT_ID &>/dev/null; then
@@ -87,11 +87,11 @@ else
 fi
 
 # Configure Docker authentication
-echo "[4/11] Configuring Docker authentication..."
+echo "[4/10] Configuring Docker authentication..."
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
 # Build and push Docker image
-echo "[5/11] Building and pushing Docker image..."
+echo "[5/10] Building and pushing Docker image..."
 cd "$(dirname "$0")/.."  # Go to airflow-demo directory
 
 docker build -t $IMAGE_URI -f docker/Dockerfile docker/
@@ -100,7 +100,7 @@ docker push $IMAGE_URI
 echo "Docker image built and pushed successfully!"
 
 # Create GCS bucket
-echo "[6/11] Creating GCS bucket..."
+echo "[6/10] Creating GCS bucket..."
 if gsutil ls -b gs://$BUCKET_NAME &>/dev/null; then
     echo "Bucket gs://$BUCKET_NAME already exists"
 else
@@ -115,7 +115,7 @@ gsutil -m mkdir -p gs://$BUCKET_NAME/notebook-outputs-vertex/ 2>/dev/null || tru
 gsutil -m mkdir -p gs://$BUCKET_NAME/credentials/ 2>/dev/null || true
 
 # Upload notebook to GCS
-echo "[7/11] Uploading notebook to GCS..."
+echo "[7/10] Uploading notebook to GCS..."
 gsutil cp notebooks/sheets_bigquery_scheduled.ipynb \
     gs://$BUCKET_NAME/notebooks/sheets_bigquery_scheduled.ipynb
 echo "Notebook uploaded successfully!"
@@ -131,7 +131,7 @@ else
 fi
 
 # Deploy DAG to Cloud Composer
-echo "[8/11] Deploying DAG to Cloud Composer..."
+echo "[8/10] Deploying DAG to Cloud Composer..."
 COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
     --location=$COMPOSER_LOCATION \
     --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
@@ -147,7 +147,7 @@ echo "Uploading DAG to: $COMPOSER_BUCKET/dags/"
 gsutil cp dags/sheets_bigquery_vertex_dag.py $COMPOSER_BUCKET/dags/
 
 # Set Airflow Variables for the DAG
-echo "[9/11] Setting Airflow Variables in Cloud Composer..."
+echo "[9/10] Setting Airflow Variables in Cloud Composer..."
 gcloud composer environments run $COMPOSER_ENV \
     --location=$COMPOSER_LOCATION \
     variables set -- gcp_project_id $PROJECT_ID
@@ -159,13 +159,14 @@ gcloud composer environments run $COMPOSER_ENV \
 echo "Airflow Variables set successfully!"
 
 # Check and install apache-airflow-providers-google if needed
-echo "[10/11] Checking apache-airflow-providers-google..."
+echo "[10/10] Checking apache-airflow-providers-google..."
 
-CURRENT_VERSION=$(gcloud composer environments describe $COMPOSER_ENV \
+if gcloud composer environments describe $COMPOSER_ENV \
     --location=$COMPOSER_LOCATION \
-    --format="value(config.softwareConfig.pypiPackages['apache-airflow-providers-google'])" 2>/dev/null)
-
-if [ -z "$CURRENT_VERSION" ]; then
+    --format="value(config.softwareConfig.pypiPackages)" 2>/dev/null | grep -q "apache-airflow-providers-google"; then
+    echo "apache-airflow-providers-google is already installed"
+    echo "Skipping installation to save time"
+else
     echo "Provider not installed. Installing apache-airflow-providers-google>=18.0.0..."
     echo "Note: This may take 10-15 minutes..."
 
@@ -174,9 +175,6 @@ if [ -z "$CURRENT_VERSION" ]; then
         --update-pypi-package apache-airflow-providers-google>=18.0.0
 
     echo "Provider installed successfully!"
-else
-    echo "apache-airflow-providers-google is already installed: $CURRENT_VERSION"
-    echo "Skipping installation to save time"
 fi
 
 echo ""
