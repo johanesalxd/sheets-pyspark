@@ -108,8 +108,8 @@ def execute_notebook(**context):
             "execution_template": {
                 "input_notebook_file": notebook_path,
                 "output_notebook_folder": output_path,
-                "machine_type": "n1-standard-4",
                 "service_account": service_account,
+                "container_image_uri": "gcr.io/deeplearning-platform-release/base-cpu:latest",
             }
         }
     )
@@ -120,6 +120,10 @@ run_notebook = PythonOperator(
     python_callable=execute_notebook,
 )
 ```
+
+**Configuration:**
+- **Container Image:** `gcr.io/deeplearning-platform-release/base-cpu:latest` (includes Python, pandas, BigQuery libraries)
+- **Machine Type:** `n1-standard-4` (4 vCPUs, 15 GB RAM)
 
 ## Resources
 

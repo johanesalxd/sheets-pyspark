@@ -50,7 +50,8 @@ def execute_notebook(**context):
     client = notebooks_v1.NotebookServiceClient()
     parent = f"projects/{project_id}/locations/{region}"
 
-    execution_id = f"execution-{context['ds_nodash']}"
+    # Use timestamp for unique execution ID (allows multiple runs per day)
+    execution_id = f"execution-{context['ts_nodash']}"
 
     operation = client.create_execution(
         parent=parent,
@@ -59,8 +60,9 @@ def execute_notebook(**context):
             "execution_template": {
                 "input_notebook_file": notebook_path,
                 "output_notebook_folder": output_path,
-                "machine_type": "n1-standard-4",
                 "service_account": service_account,
+                "container_image_uri": "gcr.io/deeplearning-platform-release/base-cpu:latest",
+                "master_type": "n1-standard-4",
             }
         }
     )
@@ -89,8 +91,8 @@ default_args = {
 with DAG(
     dag_id="sheets_bigquery_notebook_dag",
     default_args=default_args,
-    description="Schedule BigQuery notebook execution using Vertex AI Workbench",
-    schedule_interval="0 2 * * *",  # Daily at 2 AM
+    description="Execute BigQuery notebook using Vertex AI Workbench (manual trigger only)",
+    schedule_interval=None,  # Manual trigger only
     start_date=days_ago(1),
     catchup=False,
     tags=["bigquery", "notebook", "vertex-ai", "workbench", "demo"],
