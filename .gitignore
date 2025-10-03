@@ -1,6 +1,7 @@
 .venv/
-*.json
 temp/
 .vscode/
 dependencies/
 *.zip
+*.json
+output_bigquery*

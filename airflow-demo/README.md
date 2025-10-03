@@ -26,6 +26,7 @@ This demo provides three execution options for running notebooks in production:
 ```
 airflow-demo/
 ├── README.md
+├── test_notebook_local.py                      # Local testing script
 ├── dags/
 │   ├── sheets_bigquery_notebook_dag.py         # PythonVirtualenvOperator
 │   ├── sheets_bigquery_vertex_dag.py           # Vertex AI Custom Training
@@ -45,6 +46,32 @@ airflow-demo/
     ├── setup_dataproc.sh                       # Dataproc setup
     └── setup_dataproc_requirements.txt         # Dataproc dependencies
 ```
+
+## Local Testing
+
+Test notebooks locally before deploying to production.
+
+### Run Test
+
+```bash
+# From airflow-demo directory
+cd airflow-demo
+
+# Update GCP_PROJECT in test_notebook_local.py
+# Then run the test
+python test_notebook_local.py
+```
+
+The script will:
+- Copy credentials from parent directory (prevents GCS download issues)
+- Execute the BigQuery notebook with Papermill
+- Save output to `output_bigquery_YYYYMMDD_HHMMSS.ipynb`
+- Clean up credentials file automatically
+
+Requirements:
+- `papermill` installed (included in root `pyproject.toml`)
+- `drive-api.json` in parent directory
+- GCP project configured
 
 ## Quick Start
 
