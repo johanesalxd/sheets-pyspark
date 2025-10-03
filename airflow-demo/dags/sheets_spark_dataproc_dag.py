@@ -16,8 +16,6 @@ Project: Configurable via Airflow variables
 """
 
 from datetime import timedelta
-import os
-import tempfile
 
 from airflow import DAG
 from airflow.models import Variable
@@ -62,8 +60,12 @@ def convert_notebook_to_script(input_notebook: str, output_script: str, project_
     Returns:
         Path to the generated Python script in GCS.
     """
+    import os
+    import tempfile
+
     from google.cloud import storage
     from nbconvert import PythonExporter
+    from nbconvert.preprocessors import TagRemovePreprocessor
     import nbformat
 
     print(f"Converting notebook: {input_notebook}")
@@ -98,8 +100,6 @@ def convert_notebook_to_script(input_notebook: str, output_script: str, project_
 
         # Convert to Python script
         # Configure exporter to skip cells tagged with 'skip-conversion'
-        from nbconvert.preprocessors import TagRemovePreprocessor
-
         exporter = PythonExporter()
         exporter.register_preprocessor(
             TagRemovePreprocessor(remove_cell_tags=['skip-conversion']),
