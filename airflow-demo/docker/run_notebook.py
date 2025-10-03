@@ -41,11 +41,21 @@ def main():
         print("ERROR: GCP_REGION environment variable not set")
         sys.exit(1)
 
+    # Generate execution timestamp (matching Airflow template format)
+    execution_date = datetime.utcnow()
+    ds = execution_date.strftime("%Y-%m-%d")  # e.g., "2025-10-02"
+    ts_nodash = execution_date.strftime(
+        "%Y%m%dT%H%M%S")  # e.g., "20251002T194318"
+
+    # Replace Airflow template placeholders with actual timestamps
+    output_notebook = output_notebook.replace(
+        "{{ ds }}", ds).replace("{{ ts_nodash }}", ts_nodash)
+
     # Log execution details
     print("=" * 80)
     print("Vertex AI Custom Training - Notebook Execution")
     print("=" * 80)
-    print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
+    print(f"Timestamp: {execution_date.isoformat()}Z")
     print(f"Input Notebook: {input_notebook}")
     print(f"Output Notebook: {output_notebook}")
     print(f"GCP Project: {gcp_project}")

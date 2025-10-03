@@ -64,7 +64,6 @@ with DAG(
         staging_bucket=f"gs://{BUCKET_NAME}",
         display_name=f"notebook-execution-{{{{ ds }}}}-{{{{ ts_nodash }}}}",
         container_uri=CONTAINER_IMAGE_URI,
-        model_serving_container_image_uri=CONTAINER_IMAGE_URI,
         command=["python", "/app/run_notebook.py"],
         environment_variables={
             "INPUT_NOTEBOOK": INPUT_NOTEBOOK,
