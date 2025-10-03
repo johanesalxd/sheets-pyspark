@@ -19,10 +19,10 @@ The `sheets_spark_dataproc_dag` converts development notebooks to production-rea
 
 ## Important Notes
 
-- ⚠️ **Do not edit files in this directory manually**
-- ⚠️ **Files are regenerated on each DAG run**
-- ✅ **Edit the source notebook instead**
-- ✅ **This directory is for generated artifacts only**
+- **Do not edit files in this directory manually**
+- **Files are regenerated on each DAG run**
+- **Edit the source notebook instead**
+- **This directory is for generated artifacts only**
 
 ## Git Ignore
 

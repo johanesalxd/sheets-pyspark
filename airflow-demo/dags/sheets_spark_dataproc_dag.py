@@ -100,7 +100,14 @@ def convert_notebook_to_script(**context):
             notebook = nbformat.read(f, as_version=4)
 
         # Convert to Python script
+        # Configure exporter to skip cells tagged with 'skip-conversion'
+        from nbconvert.preprocessors import TagRemovePreprocessor
+
         exporter = PythonExporter()
+        exporter.register_preprocessor(
+            TagRemovePreprocessor(remove_cell_tags=['skip-conversion']),
+            enabled=True
+        )
         script, _ = exporter.from_notebook_node(notebook)
 
         # Add shebang and encoding

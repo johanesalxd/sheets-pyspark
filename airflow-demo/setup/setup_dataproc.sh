@@ -36,13 +36,13 @@ echo -e "${YELLOW}Step 1: Enabling required APIs...${NC}"
 gcloud services enable dataproc.googleapis.com \
     --project=$PROJECT_ID
 
-echo -e "${GREEN}✓ APIs enabled${NC}"
+echo -e "${GREEN}APIs enabled${NC}"
 echo ""
 
 # Step 2: Verify GCS bucket exists (created by setup.sh)
 echo -e "${YELLOW}Step 2: Verifying GCS bucket...${NC}"
 if gsutil ls -b gs://$BUCKET_NAME > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Bucket gs://$BUCKET_NAME exists${NC}"
+    echo -e "${GREEN}Bucket gs://$BUCKET_NAME exists${NC}"
 else
     echo -e "${RED}Error: Bucket gs://$BUCKET_NAME does not exist${NC}"
     echo "Please run setup.sh first to create the bucket"
@@ -55,14 +55,14 @@ echo -e "${YELLOW}Step 3: Creating scripts directory in GCS...${NC}"
 echo "This directory will store auto-generated Python scripts"
 gsutil ls gs://$BUCKET_NAME/scripts/ > /dev/null 2>&1 || \
     echo "# Auto-generated scripts directory" | gsutil cp - gs://$BUCKET_NAME/scripts/README.txt
-echo -e "${GREEN}✓ Scripts directory created${NC}"
+echo -e "${GREEN}Scripts directory created${NC}"
 echo ""
 
 # Step 4: Upload Spark development notebook to GCS
 echo -e "${YELLOW}Step 4: Uploading Spark notebook to GCS...${NC}"
 if [ -f "../notebooks/sheets_spark_dev.ipynb" ]; then
     gsutil cp ../notebooks/sheets_spark_dev.ipynb gs://$BUCKET_NAME/notebooks/
-    echo -e "${GREEN}✓ Notebook uploaded to gs://$BUCKET_NAME/notebooks/${NC}"
+    echo -e "${GREEN}Notebook uploaded to gs://$BUCKET_NAME/notebooks/${NC}"
 else
     echo -e "${RED}Error: Notebook file not found at ../notebooks/sheets_spark_dev.ipynb${NC}"
     exit 1
@@ -80,7 +80,7 @@ if [ -f "../dags/sheets_spark_dataproc_dag.py" ]; then
 
     # Upload DAG
     gsutil cp ../dags/sheets_spark_dataproc_dag.py ${COMPOSER_BUCKET}/dags/
-    echo -e "${GREEN}✓ DAG deployed to Cloud Composer${NC}"
+    echo -e "${GREEN}DAG deployed to Cloud Composer${NC}"
 else
     echo -e "${RED}Error: DAG file not found at ../dags/sheets_spark_dataproc_dag.py${NC}"
     exit 1
@@ -109,9 +109,9 @@ if [ -z "$EXISTING_PROJECT" ]; then
         --project $PROJECT_ID \
         variables set -- gcp_region $REGION
 
-    echo -e "${GREEN}✓ Airflow variables configured${NC}"
+    echo -e "${GREEN}Airflow variables configured${NC}"
 else
-    echo -e "${GREEN}✓ Airflow variables already configured${NC}"
+    echo -e "${GREEN}Airflow variables already configured${NC}"
 fi
 echo ""
 
@@ -119,9 +119,9 @@ echo ""
 echo -e "${YELLOW}Step 7: Verifying deployment...${NC}"
 echo ""
 echo "Checking GCS resources:"
-echo "  Notebook: $(gsutil ls gs://$BUCKET_NAME/notebooks/sheets_spark_dev.ipynb && echo '✓' || echo '✗')"
-echo "  Scripts dir: $(gsutil ls gs://$BUCKET_NAME/scripts/ && echo '✓' || echo '✗')"
-echo "  Credentials: $(gsutil ls gs://$BUCKET_NAME/credentials/drive-api.json && echo '✓' || echo '✗')"
+echo "  Notebook: $(gsutil ls gs://$BUCKET_NAME/notebooks/sheets_spark_dev.ipynb && echo 'OK' || echo 'MISSING')"
+echo "  Scripts dir: $(gsutil ls gs://$BUCKET_NAME/scripts/ && echo 'OK' || echo 'MISSING')"
+echo "  Credentials: $(gsutil ls gs://$BUCKET_NAME/credentials/drive-api.json && echo 'OK' || echo 'MISSING')"
 echo ""
 
 # Summary

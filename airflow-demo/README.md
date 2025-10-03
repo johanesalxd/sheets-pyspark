@@ -147,10 +147,10 @@ These variables are automatically set by the setup script. You can view/modify t
 ### Why Airflow Variables?
 
 Following [Airflow best practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html#airflow-variables):
-- ✅ **Per-DAG isolation**: Different DAGs can use different projects/regions
-- ✅ **Easy to change**: Modify in UI without redeploying
-- ✅ **Visible**: See all configurations in one place
-- ✅ **Standard practice**: Recommended by Airflow documentation
+- **Per-DAG isolation**: Different DAGs can use different projects/regions
+- **Easy to change**: Modify in UI without redeploying
+- **Visible**: See all configurations in one place
+- **Standard practice**: Recommended by Airflow documentation
 
 ## Monitoring
 
