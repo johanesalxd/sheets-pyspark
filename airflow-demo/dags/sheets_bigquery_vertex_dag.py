@@ -44,7 +44,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(hours=2),
+    "execution_timeout": timedelta(hours=1),
 }
 
 # Define the DAG

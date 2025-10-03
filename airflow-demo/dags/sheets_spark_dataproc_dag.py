@@ -34,7 +34,7 @@ REGION: str = Variable.get("gcp_region", default_var="us-central1")
 BUCKET_NAME: str = f"{PROJECT_ID}-notebooks"
 INPUT_NOTEBOOK: str = f"gs://{BUCKET_NAME}/notebooks/sheets_spark_dev.ipynb"
 OUTPUT_SCRIPT: str = f"gs://{BUCKET_NAME}/scripts/sheets_spark_job.py"
-SPARK_BIGQUERY_JAR: str = "gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12:0.32.2"
+SPARK_BIGQUERY_JAR = "gs://spark-lib/bigquery/spark-3.3-bigquery-0.42.2.jar"
 
 # Default arguments for the DAG
 default_args = {
@@ -44,18 +44,20 @@ default_args = {
     "email_on_retry": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(hours=2),
+    "execution_timeout": timedelta(hours=1),
 }
 
 
-def convert_notebook_to_script(**context):
+def convert_notebook_to_script(input_notebook: str, output_script: str, project_id: str) -> str:
     """Converts Jupyter notebook to Python script for Dataproc Serverless.
 
     This function downloads the notebook from GCS, converts it to a Python
     script using nbconvert, and uploads the script back to GCS.
 
     Args:
-        **context: Airflow context containing task instance and other metadata.
+        input_notebook: GCS path to input notebook.
+        output_script: GCS path for output Python script.
+        project_id: GCP project ID.
 
     Returns:
         Path to the generated Python script in GCS.
@@ -63,11 +65,6 @@ def convert_notebook_to_script(**context):
     from google.cloud import storage
     from nbconvert import PythonExporter
     import nbformat
-
-    # Get configuration from context
-    input_notebook = INPUT_NOTEBOOK
-    output_script = OUTPUT_SCRIPT
-    project_id = PROJECT_ID
 
     print(f"Converting notebook: {input_notebook}")
     print(f"Output script: {output_script}")
@@ -156,8 +153,12 @@ with DAG(
             "nbformat>=5.0.0",
             "google-cloud-storage",
         ],
+        op_kwargs={
+            "input_notebook": INPUT_NOTEBOOK,
+            "output_script": OUTPUT_SCRIPT,
+            "project_id": PROJECT_ID,
+        },
         system_site_packages=False,
-        provide_context=True,
     )
 
     # Task 2: Submit PySpark batch to Dataproc Serverless
