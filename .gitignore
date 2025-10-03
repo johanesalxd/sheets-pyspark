@@ -1,3 +1,6 @@
 .venv/
 *.json
 temp/
+.vscode/
+dependencies/
+*.zip

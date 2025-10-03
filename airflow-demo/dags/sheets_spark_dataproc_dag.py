@@ -32,7 +32,7 @@ REGION: str = Variable.get("gcp_region", default_var="us-central1")
 BUCKET_NAME: str = f"{PROJECT_ID}-notebooks"
 INPUT_NOTEBOOK: str = f"gs://{BUCKET_NAME}/notebooks/sheets_spark_dev.ipynb"
 OUTPUT_SCRIPT: str = f"gs://{BUCKET_NAME}/scripts/sheets_spark_job.py"
-SPARK_BIGQUERY_JAR = "gs://spark-lib/bigquery/spark-3.3-bigquery-0.42.2.jar"
+DEPENDENCIES_ZIP: str = f"gs://{BUCKET_NAME}/dependencies/dependencies.zip"
 
 # Default arguments for the DAG
 default_args = {
@@ -162,6 +162,7 @@ with DAG(
     )
 
     # Task 2: Submit PySpark batch to Dataproc Serverless
+    # Note: Spark BigQuery connector is built-in to Dataproc Serverless, no JAR needed
     submit_spark_batch = DataprocCreateBatchOperator(
         task_id="submit_to_dataproc_serverless",
         project_id=PROJECT_ID,
@@ -169,16 +170,11 @@ with DAG(
         batch={
             "pyspark_batch": {
                 "main_python_file_uri": OUTPUT_SCRIPT,
-                "jar_file_uris": [SPARK_BIGQUERY_JAR],
+                "python_file_uris": [DEPENDENCIES_ZIP],
                 "args": [PROJECT_ID, REGION],
             },
-            "environment_config": {
-                "execution_config": {
-                    "service_account": f"{PROJECT_ID}@appspot.gserviceaccount.com",
-                },
-            },
         },
-        batch_id=f"sheets-spark-batch-{{{{ ds_nodash }}}}-{{{{ ts_nodash }}}}",
+        batch_id=f"sheets-spark-{{{{ ds_nodash }}}}-{{{{ ts_nodash | lower | replace('t', '') }}}}",
     )
 
     # Define task dependencies

@@ -1,10 +1,10 @@
 # Airflow Notebook Scheduling Demo
 
-Demonstrates three different approaches for scheduling notebook execution in GCP using Cloud Composer (Airflow).
+Demonstrates three approaches for scheduling notebook execution in GCP using Cloud Composer (Airflow).
 
 ## Overview
 
-This demo provides three execution options for running notebooks in production, each optimized for different use cases:
+This demo provides three execution options for running notebooks in production:
 
 1. **PythonVirtualenvOperator** - Cost-effective execution on Composer workers
 2. **Vertex AI Custom Training** - Flexible execution with custom containers
@@ -14,35 +14,36 @@ This demo provides three execution options for running notebooks in production, 
 
 | Feature | PythonVirtualenv | Vertex AI | Dataproc Serverless |
 |---------|-----------------|-----------|---------------------|
-| **Compute** | Composer workers | Dedicated VM | Serverless Spark |
-| **Startup Time** | Instant | ~2-3 min | ~60 sec |
-| **Scaling** | No | No | Auto-scale |
-| **Cost** | Lowest | Medium | Pay-per-use |
-| **Best For** | Simple workloads | Isolation, custom deps | Spark workloads |
-| **Package Isolation** | virtualenv | Docker container | Custom container |
+| Compute | Composer workers | Dedicated VM | Serverless Spark |
+| Startup Time | Instant | 2-3 min | 60 sec |
+| Scaling | No | No | Auto-scale |
+| Cost | Lowest | Medium | Pay-per-use |
+| Best For | Simple workloads | Isolation, custom deps | Spark workloads |
+| Package Isolation | virtualenv | Docker container | Dependencies ZIP |
 
 ## Project Structure
 
 ```
 airflow-demo/
-├── README.md                                    # This file
+├── README.md
 ├── dags/
-│   ├── sheets_bigquery_notebook_dag.py         # PythonVirtualenvOperator DAG
-│   ├── sheets_bigquery_vertex_dag.py           # Vertex AI Custom Training DAG
-│   └── sheets_spark_dataproc_dag.py            # Dataproc Serverless DAG
+│   ├── sheets_bigquery_notebook_dag.py         # PythonVirtualenvOperator
+│   ├── sheets_bigquery_vertex_dag.py           # Vertex AI Custom Training
+│   └── sheets_spark_dataproc_dag.py            # Dataproc Serverless
 ├── docker/
-│   ├── Dockerfile                              # Container for Vertex AI
+│   ├── Dockerfile                              # Vertex AI container
 │   ├── requirements.txt                        # Python dependencies
 │   └── run_notebook.py                         # Notebook executor
 ├── notebooks/
-│   ├── sheets_bigquery_scheduled.ipynb         # BigQuery notebook (Papermill)
-│   └── sheets_spark_dev.ipynb                  # Spark notebook (development)
+│   ├── sheets_bigquery_scheduled.ipynb         # BigQuery notebook
+│   └── sheets_spark_dev.ipynb                  # Spark notebook
 ├── scripts/
-│   └── README.md                               # Auto-generated scripts info
+│   └── README.md                               # Auto-generated scripts
 └── setup/
     ├── setup.sh                                # PythonVirtualenv setup
     ├── setup_vertex.sh                         # Vertex AI setup
-    └── setup_dataproc.sh                       # Dataproc Serverless setup
+    ├── setup_dataproc.sh                       # Dataproc setup
+    └── setup_dataproc_requirements.txt         # Dataproc dependencies
 ```
 
 ## Quick Start
@@ -54,70 +55,47 @@ airflow-demo/
 - `gcloud` CLI configured
 - `drive-api.json` credentials in parent directory
 
-### Setup Options
+### Setup
 
-Choose the execution method that best fits your needs:
+Choose the execution method that fits your needs:
 
-#### Option 1: PythonVirtualenvOperator (Recommended for Simple Workloads)
-
+**Option 1: PythonVirtualenvOperator**
 ```bash
 cd airflow-demo/setup
 ./setup.sh your-project-id
 ```
 
-**Best for:** Cost-effective execution, simple dependencies, quick setup
-
-#### Option 2: Vertex AI Custom Training (Recommended for Isolation)
-
+**Option 2: Vertex AI Custom Training**
 ```bash
 cd airflow-demo/setup
 ./setup_vertex.sh your-project-id
 ```
 
-**Best for:** Custom dependencies, complete isolation, flexible compute
-
-#### Option 3: Dataproc Serverless (Recommended for Spark Workloads)
-
+**Option 3: Dataproc Serverless**
 ```bash
 cd airflow-demo/setup
 ./setup_dataproc.sh your-project-id
 ```
 
-**Best for:** Spark processing, auto-scaling, data-intensive workloads
-
 ## Execution
 
 ### Trigger DAGs
 
-**Via Airflow UI:**
+Via Airflow UI:
 1. Open Cloud Composer Airflow UI
-2. Enable the desired DAG:
-   - `sheets_bigquery_notebook_dag` (PythonVirtualenv)
-   - `sheets_bigquery_vertex_dag` (Vertex AI)
-   - `sheets_spark_dataproc_dag` (Dataproc Serverless)
+2. Enable the desired DAG
 3. Click "Trigger DAG"
 
-**Via CLI:**
+Via CLI:
 ```bash
-# PythonVirtualenv
 gcloud composer environments run composer-demo \
   --location us-central1 \
   dags trigger -- sheets_bigquery_notebook_dag
-
-# Vertex AI
-gcloud composer environments run composer-demo \
-  --location us-central1 \
-  dags trigger -- sheets_bigquery_vertex_dag
-
-# Dataproc Serverless
-gcloud composer environments run composer-demo \
-  --location us-central1 \
-  dags trigger -- sheets_spark_dataproc_dag
 ```
 
 ### Verification
 
-**Check deployment:**
+Check deployment:
 ```bash
 # GCS bucket
 gsutil ls gs://your-project-id-notebooks/
@@ -126,73 +104,37 @@ gsutil ls gs://your-project-id-notebooks/
 gsutil ls gs://your-project-id-notebooks/notebooks/
 
 # Output notebooks
-gsutil ls gs://your-project-id-notebooks/notebook-outputs/        # PythonVirtualenv
-gsutil ls gs://your-project-id-notebooks/notebook-outputs-vertex/ # Vertex AI
-
-# Generated scripts (Dataproc only)
-gsutil ls gs://your-project-id-notebooks/scripts/
+gsutil ls gs://your-project-id-notebooks/notebook-outputs/
 ```
 
 ## Configuration
 
-The DAG uses **Airflow Variables** for configuration (following Airflow best practices):
+DAGs use Airflow Variables for configuration:
 
-- **`gcp_project_id`**: GCP project ID for BigQuery operations
-- **`gcp_region`**: GCP region (default: `us-central1`)
+- `gcp_project_id`: GCP project ID
+- `gcp_region`: GCP region (default: `us-central1`)
 
-These variables are automatically set by the setup script. You can view/modify them in:
-- **Airflow UI:** Admin → Variables
-- **CLI:** `gcloud composer environments run composer-demo --location us-central1 variables list`
+Variables are set automatically by setup scripts. View/modify in Airflow UI under Admin → Variables.
 
-### Why Airflow Variables?
+## Implementation Details
 
-Following [Airflow best practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html#airflow-variables):
-- **Per-DAG isolation**: Different DAGs can use different projects/regions
-- **Easy to change**: Modify in UI without redeploying
-- **Visible**: See all configurations in one place
-- **Standard practice**: Recommended by Airflow documentation
+### 1. PythonVirtualenvOperator
 
-## Monitoring
-
-- **Airflow UI:** DAG status and logs
-- **GCS:** Output notebooks in `notebook-outputs/` folder
-- **BigQuery:** Check temp tables created by notebook
-
-## How It Works
-
-### Architecture
-
+**Architecture:**
 ```
-Airflow DAG (Cloud Composer)
-  → PythonVirtualenvOperator
-    → Creates isolated virtualenv
-      → Installs packages (papermill, gspread, bigframes)
-        → Runs Python function
-          → Executes notebook with Papermill
-            → Injects parameters
-              → Saves output to GCS
+Airflow DAG → PythonVirtualenvOperator → virtualenv → Papermill → Notebook
 ```
 
-### Implementation
+**Features:**
+- Runs on Composer workers (no extra compute)
+- Isolated virtualenv per task
+- Fast execution (no startup time)
+- Package isolation
 
-The DAG uses PythonVirtualenvOperator to create isolated environments:
+**Use Case:** BigQuery data processing with BigFrames
 
+**Implementation:**
 ```python
-from airflow.operators.python import PythonVirtualenvOperator
-
-def run_notebook_in_venv(gcp_project, gcp_region, input_nb, output_nb):
-    import papermill as pm
-
-    result = pm.execute_notebook(
-        input_path=input_nb,
-        output_path=output_nb,
-        parameters={
-            "GCP_PROJECT": gcp_project,
-            "GCP_REGION": gcp_region,
-        },
-    )
-    return output_nb
-
 run_notebook = PythonVirtualenvOperator(
     task_id="execute_sheets_bigquery_notebook",
     python_callable=run_notebook_in_venv,
@@ -203,66 +145,9 @@ run_notebook = PythonVirtualenvOperator(
         "bigframes",
         "db-dtypes",
     ],
-    op_kwargs={
-        "gcp_project": PROJECT_ID,
-        "gcp_region": REGION,
-        "input_nb": INPUT_NOTEBOOK,
-        "output_nb": OUTPUT_NOTEBOOK,
-    },
-    system_site_packages=False,  # Complete isolation
+    system_site_packages=False,
 )
 ```
-
-### Key Features
-
-- **Isolated Environments:** Each task runs in a fresh virtualenv with only specified packages
-- **No Package Conflicts:** Different DAGs can use different package versions
-- **Cost-Effective:** Runs on existing Composer workers, no extra compute
-- **Flexible:** Easy to add/change packages per DAG
-- **Production Ready:** Built on Airflow's standard operators
-
-### Notebook Parameters
-
-The notebook has a parameters cell that Papermill injects values into:
-
-```python
-# Parameters (injected by Papermill)
-GCP_PROJECT = "your-project-id"  # Will be overridden by Airflow
-GCP_REGION = "us-central1"  # Will be overridden by Airflow
-```
-
-## Package Isolation
-
-### How It Works
-
-1. **PythonVirtualenvOperator** creates a fresh virtualenv for each task execution
-2. Installs only the packages specified in `requirements` parameter
-3. Runs the Python function in that isolated environment
-4. Virtualenv is cached for subsequent runs (faster)
-
-### Benefits
-
-- **No Conflicts:** DAG A can use `bigframes==1.0.0` while DAG B uses `bigframes==2.0.0`
-- **Clean State:** Each execution starts with a fresh environment
-- **Easy Updates:** Change packages without affecting other DAGs
-- **Cost-Effective:** No need for separate compute resources
-
-## Detailed Implementation Guides
-
-### 1. PythonVirtualenvOperator
-
-**Architecture:**
-```
-Airflow DAG → PythonVirtualenvOperator → virtualenv → Papermill → Notebook
-```
-
-**Key Features:**
-- Runs on Composer workers (no extra compute cost)
-- Isolated virtualenv per task
-- Fast execution (no startup time)
-- Perfect for simple workloads
-
-**Use Case:** BigQuery data processing with BigFrames
 
 ### 2. Vertex AI Custom Training
 
@@ -271,13 +156,19 @@ Airflow DAG → PythonVirtualenvOperator → virtualenv → Papermill → Notebo
 Airflow DAG → Vertex AI Job → Custom Container → Papermill → Notebook
 ```
 
-**Key Features:**
+**Features:**
 - Dedicated compute resources
 - Custom Docker containers
 - Complete isolation
 - Flexible machine types
 
 **Use Case:** Complex dependencies, custom environments
+
+**Implementation:**
+- Builds Docker image with dependencies
+- Submits Custom Training job to Vertex AI
+- Executes notebook in container
+- Saves output to GCS
 
 ### 3. Dataproc Serverless
 
@@ -286,19 +177,126 @@ Airflow DAG → Vertex AI Job → Custom Container → Papermill → Notebook
 Airflow DAG → Convert Notebook → PySpark Script → Dataproc Serverless → Spark
 ```
 
-**Key Features:**
+**Features:**
 - Serverless Spark execution
 - Auto-scaling compute
 - No cluster management
-- Industry-standard PySpark deployment
+- Built-in BigQuery connector
 
 **Use Case:** Spark workloads, large-scale data processing
 
-**Unique Workflow:**
+**Workflow:**
 1. Develop in Jupyter notebook (`sheets_spark_dev.ipynb`)
 2. DAG converts notebook to Python script
-3. Script submitted to Dataproc Serverless
+3. Script submitted to Dataproc Serverless with dependencies
 4. Executes on auto-scaling Spark cluster
+
+**Python Dependencies:**
+
+Dependencies are packaged as ZIP and uploaded to GCS:
+```bash
+# setup_dataproc_requirements.txt
+gspread>=5.0.0
+oauth2client>=4.1.3
+google-cloud-storage>=2.0.0
+```
+
+Setup script creates `dependencies.zip` and uploads to GCS. DAG references it:
+```python
+batch={
+    "pyspark_batch": {
+        "main_python_file_uri": OUTPUT_SCRIPT,
+        "python_file_uris": [DEPENDENCIES_ZIP],
+        "args": [PROJECT_ID, REGION],
+    },
+}
+```
+
+**Dual-Mode Notebook:**
+
+The notebook supports both interactive development and batch execution:
+
+```python
+# Parameters cell - reads sys.argv for batch, uses defaults for interactive
+import sys
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+if len(sys.argv) > 1:
+    # Batch mode: read from command-line arguments
+    GCP_PROJECT = sys.argv[1]
+    GCP_REGION = sys.argv[2] if len(sys.argv) > 2 else "us-central1"
+else:
+    # Interactive mode: use defaults
+    GCP_PROJECT = "your-project-id"
+    GCP_REGION = "us-central1"
+```
+
+**Cell Tagging:**
+
+Tag cells to control conversion from notebook to script:
+
+**Interactive-only cell** (tagged `skip-conversion`):
+```python
+# This cell is skipped during conversion
+from google.cloud.dataproc_spark_connect import DataprocSparkSession
+
+spark = DataprocSparkSession.builder \
+    .projectId(GCP_PROJECT) \
+    .location(GCP_REGION) \
+    .getOrCreate()
+```
+
+**Batch-compatible cell** (no tag):
+```python
+# This cell is included in the converted script
+try:
+    spark  # Check if exists from interactive cell
+except NameError:
+    from pyspark.sql import SparkSession
+    spark = SparkSession.builder.appName("sheets-to-bigquery").getOrCreate()
+```
+
+**How to tag cells:**
+
+Jupyter Lab:
+1. Click cell to tag
+2. Open Property Inspector (gear icon)
+3. Add tag: `skip-conversion`
+
+Jupyter Notebook:
+1. Enable Cell Toolbar: View → Cell Toolbar → Tags
+2. Enter tag name and click "Add tag"
+
+**Verification:**
+
+Check generated script excludes tagged cells:
+```bash
+gsutil cat gs://your-project-id-notebooks/scripts/sheets_spark_job.py | grep -i "DataprocSparkSession"
+# Should return nothing (cell was skipped)
+```
+
+**BigQuery Connector:**
+
+Dataproc Serverless includes the Spark BigQuery connector. No external JARs needed:
+```python
+# Write to BigQuery using built-in connector
+df.write \
+    .format("bigquery") \
+    .option("table", f"{GCP_PROJECT}.temp.table_name") \
+    .option("writeMethod", "direct") \
+    .mode("overwrite") \
+    .save()
+```
+
+## Monitoring
+
+- Airflow UI: DAG status and logs
+- GCS: Output notebooks in `notebook-outputs/` folder
+- BigQuery: Check temp tables created by notebook
+- Dataproc Batches: https://console.cloud.google.com/dataproc/batches
 
 ## Resources
 
