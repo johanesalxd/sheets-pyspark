@@ -1,129 +1,151 @@
 #!/bin/bash
-# Setup script for PythonVirtualenvOperator with Cloud Composer.
-#
-# This script configures Cloud Composer to run notebooks using PythonVirtualenvOperator,
-# which creates isolated Python environments for each task execution.
-#
-# Operations performed:
-# - Enables required GCP APIs (Storage, BigQuery, Composer)
-# - Creates GCS bucket for notebooks and outputs
-# - Uploads notebook and credentials to GCS
-# - Deploys DAG to Cloud Composer
-# - Sets Airflow variables for DAG configuration
-#
-# Prerequisites:
-# - gcloud CLI installed and authenticated
-# - Cloud Composer environment already created
-# - Service account credentials file (drive-api.json) in parent directory
-#
-# Usage:
-#     ./setup.sh [PROJECT_ID]
-#
-# Args:
-#     PROJECT_ID: GCP project ID (optional, defaults to 'your-project-id')
-#
-# Exit codes:
-#     0: Success
-#     1: Error occurred (API enablement, bucket creation, or Composer operations)
 
-set -e
+# Setup script for PythonVirtualenvOperator with Cloud Composer
+# This script configures Cloud Composer to run notebooks using PythonVirtualenvOperator
 
-# Configuration - Easy to change
-PROJECT_ID="${1:-your-project-id}"
+set -e  # Exit on error
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if project ID is provided
+if [ -z "$1" ]; then
+    echo -e "${RED}Error: GCP Project ID is required${NC}"
+    echo "Usage: ./setup.sh YOUR_PROJECT_ID"
+    exit 1
+fi
+
+PROJECT_ID=$1
 REGION="us-central1"
 COMPOSER_ENV="composer-demo"
 COMPOSER_LOCATION="us-central1"
-
-# Derived variables
 BUCKET_NAME="${PROJECT_ID}-notebooks"
 
-echo "=========================================="
-echo "Setup for PythonVirtualenvOperator"
-echo "=========================================="
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}PythonVirtualenvOperator Setup${NC}"
+echo -e "${GREEN}========================================${NC}"
 echo "Project ID: $PROJECT_ID"
 echo "Region: $REGION"
 echo "Composer Environment: $COMPOSER_ENV"
-echo "=========================================="
 echo ""
 
-# Set the project
-echo "[1/6] Setting GCP project..."
+# Step 1: Set the project
+echo -e "${YELLOW}Step 1: Setting GCP project...${NC}"
 gcloud config set project $PROJECT_ID
+echo -e "${GREEN}Project set${NC}"
+echo ""
 
-# Enable required APIs
-echo "[2/6] Enabling required APIs..."
+# Step 2: Enable required APIs
+echo -e "${YELLOW}Step 2: Enabling required APIs...${NC}"
 gcloud services enable \
     storage.googleapis.com \
     bigquery.googleapis.com \
     composer.googleapis.com \
     --project=$PROJECT_ID
 
-echo "APIs enabled successfully!"
+echo -e "${GREEN}APIs enabled${NC}"
+echo ""
 
-# Create GCS bucket
-echo "[3/6] Creating GCS bucket..."
-if gsutil ls -b gs://$BUCKET_NAME &>/dev/null; then
-    echo "Bucket gs://$BUCKET_NAME already exists"
+# Step 3: Create GCS bucket
+echo -e "${YELLOW}Step 3: Creating GCS bucket...${NC}"
+if gsutil ls -b gs://$BUCKET_NAME > /dev/null 2>&1; then
+    echo -e "${GREEN}Bucket gs://$BUCKET_NAME exists${NC}"
 else
     gsutil mb -p $PROJECT_ID -l $REGION gs://$BUCKET_NAME
-    echo "Bucket created"
+    echo -e "${GREEN}Bucket created${NC}"
 fi
 
 # Create bucket directories
-echo "Creating bucket directories..."
 gsutil -m mkdir -p gs://$BUCKET_NAME/notebooks/ 2>/dev/null || true
 gsutil -m mkdir -p gs://$BUCKET_NAME/notebook-outputs/ 2>/dev/null || true
 gsutil -m mkdir -p gs://$BUCKET_NAME/credentials/ 2>/dev/null || true
+echo ""
 
-# Upload notebook to GCS
-echo "[4/6] Uploading notebook to GCS..."
+# Step 4: Upload notebook to GCS
+echo -e "${YELLOW}Step 4: Uploading notebook to GCS...${NC}"
 cd "$(dirname "$0")/.."  # Go to airflow-demo directory
-gsutil cp notebooks/sheets_bigquery_scheduled.ipynb \
-    gs://$BUCKET_NAME/notebooks/sheets_bigquery_scheduled.ipynb
-echo "Notebook uploaded successfully!"
-
-# Upload credentials to GCS (if exists)
-echo "Uploading credentials to GCS..."
-if [ -f "../drive-api.json" ]; then
-    gsutil cp ../drive-api.json gs://$BUCKET_NAME/credentials/drive-api.json
-    echo "Credentials uploaded successfully!"
+if [ -f "notebooks/sheets_bigquery_scheduled.ipynb" ]; then
+    gsutil cp notebooks/sheets_bigquery_scheduled.ipynb \
+        gs://$BUCKET_NAME/notebooks/sheets_bigquery_scheduled.ipynb
+    echo -e "${GREEN}Notebook uploaded to gs://$BUCKET_NAME/notebooks/${NC}"
 else
-    echo "WARNING: drive-api.json not found in parent directory"
-    echo "You'll need to upload it manually to: gs://$BUCKET_NAME/credentials/drive-api.json"
-fi
-
-# Deploy DAG to Cloud Composer
-echo "[5/6] Deploying DAG to Cloud Composer..."
-COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
-    --location=$COMPOSER_LOCATION \
-    --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
-
-if [ -z "$COMPOSER_BUCKET" ]; then
-    echo "ERROR: Cloud Composer environment '$COMPOSER_ENV' not found in location '$COMPOSER_LOCATION'"
-    echo "Verify the environment exists with: gcloud composer environments list --locations=$COMPOSER_LOCATION"
-    echo "Or create it with: gcloud composer environments create $COMPOSER_ENV --location=$COMPOSER_LOCATION"
+    echo -e "${RED}Error: Notebook file not found at notebooks/sheets_bigquery_scheduled.ipynb${NC}"
     exit 1
 fi
 
-echo "Uploading DAG to: $COMPOSER_BUCKET/dags/"
-gsutil cp dags/sheets_bigquery_notebook_dag.py $COMPOSER_BUCKET/dags/
-
-# Set Airflow Variables for the DAG
-echo "[6/6] Setting Airflow Variables in Cloud Composer..."
-gcloud composer environments run $COMPOSER_ENV \
-    --location=$COMPOSER_LOCATION \
-    variables set -- gcp_project_id $PROJECT_ID
-
-gcloud composer environments run $COMPOSER_ENV \
-    --location=$COMPOSER_LOCATION \
-    variables set -- gcp_region $REGION
-
-echo "Airflow Variables set successfully!"
-
+# Upload credentials to GCS (if exists)
+if [ -f "../drive-api.json" ]; then
+    gsutil cp ../drive-api.json gs://$BUCKET_NAME/credentials/drive-api.json
+    echo -e "${GREEN}Credentials uploaded${NC}"
+else
+    echo -e "${YELLOW}Warning: drive-api.json not found in parent directory${NC}"
+    echo "You'll need to upload it manually to: gs://$BUCKET_NAME/credentials/drive-api.json"
+fi
 echo ""
-echo "=========================================="
-echo "Setup completed successfully!"
-echo "=========================================="
+
+# Step 5: Deploy DAG to Cloud Composer
+echo -e "${YELLOW}Step 5: Deploying DAG to Cloud Composer...${NC}"
+if [ -f "dags/sheets_bigquery_notebook_dag.py" ]; then
+    COMPOSER_BUCKET=$(gcloud composer environments describe $COMPOSER_ENV \
+        --location $COMPOSER_LOCATION \
+        --project $PROJECT_ID \
+        --format="get(config.dagGcsPrefix)" | sed 's|/dags||')
+
+    if [ -z "$COMPOSER_BUCKET" ]; then
+        echo -e "${RED}Error: Cloud Composer environment '$COMPOSER_ENV' not found${NC}"
+        exit 1
+    fi
+
+    gsutil cp dags/sheets_bigquery_notebook_dag.py ${COMPOSER_BUCKET}/dags/
+    echo -e "${GREEN}DAG deployed to Cloud Composer${NC}"
+else
+    echo -e "${RED}Error: DAG file not found at dags/sheets_bigquery_notebook_dag.py${NC}"
+    exit 1
+fi
+echo ""
+
+# Step 6: Set Airflow Variables
+echo -e "${YELLOW}Step 6: Configuring Airflow Variables...${NC}"
+
+# Check if variables already exist
+EXISTING_PROJECT=$(gcloud composer environments run $COMPOSER_ENV \
+    --location $COMPOSER_LOCATION \
+    --project $PROJECT_ID \
+    variables get -- gcp_project_id 2>/dev/null || echo "")
+
+if [ -z "$EXISTING_PROJECT" ]; then
+    gcloud composer environments run $COMPOSER_ENV \
+        --location $COMPOSER_LOCATION \
+        --project $PROJECT_ID \
+        variables set -- gcp_project_id $PROJECT_ID
+
+    gcloud composer environments run $COMPOSER_ENV \
+        --location $COMPOSER_LOCATION \
+        --project $PROJECT_ID \
+        variables set -- gcp_region $REGION
+
+    echo -e "${GREEN}Airflow variables configured${NC}"
+else
+    echo -e "${GREEN}Airflow variables already configured${NC}"
+fi
+echo ""
+
+# Step 7: Verification
+echo -e "${YELLOW}Step 7: Verifying deployment...${NC}"
+echo ""
+echo "Checking GCS resources:"
+echo "  Notebook: $(gsutil ls gs://$BUCKET_NAME/notebooks/sheets_bigquery_scheduled.ipynb && echo 'OK' || echo 'MISSING')"
+echo "  Outputs dir: $(gsutil ls gs://$BUCKET_NAME/notebook-outputs/ && echo 'OK' || echo 'MISSING')"
+echo "  Credentials: $(gsutil ls gs://$BUCKET_NAME/credentials/drive-api.json && echo 'OK' || echo 'MISSING')"
+echo ""
+
+# Summary
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Setup Complete!${NC}"
+echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Configuration Summary:"
 echo "  Project ID: $PROJECT_ID"
