@@ -21,7 +21,7 @@ import tempfile
 
 from airflow import DAG
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonVirtualenvOperator
 from airflow.providers.google.cloud.operators.dataproc import \
     DataprocCreateBatchOperator
 from airflow.utils.dates import days_ago
@@ -148,9 +148,15 @@ with DAG(
 ) as dag:
 
     # Task 1: Convert notebook to Python script
-    convert_notebook = PythonOperator(
+    convert_notebook = PythonVirtualenvOperator(
         task_id="convert_notebook_to_script",
         python_callable=convert_notebook_to_script,
+        requirements=[
+            "nbconvert>=7.0.0",
+            "nbformat>=5.0.0",
+            "google-cloud-storage",
+        ],
+        system_site_packages=False,
         provide_context=True,
     )
 
